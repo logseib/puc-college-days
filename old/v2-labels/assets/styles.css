@@ -1,0 +1,212 @@
+/* =====================================================================
+ * PUC College Days — styles (v2: light, quiet, one day)
+ * Light gray paper, dark ink. Sticky header (date + time) that
+ * cross-fades; title / photo / map snap one event per swipe.
+ * No rounded corners on images or the map.
+ * ===================================================================== */
+
+:root {
+  --bg: #e9e9e9;
+  --ink: #161616;
+  --muted: #6f6f6f;
+  --faint: #b9b9b9;
+  --red: #e1251b;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --bar-h: 86px;          /* sticky header height (below the safe area) */
+  --gutter: 40px;         /* left gutter that holds the progress rail */
+  --pad-r: 20px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); }
+body {
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;                 /* the timeline is the only scroller */
+  overscroll-behavior: none;
+}
+
+/* ---------- Sticky header ---------- */
+.bar {
+  position: fixed; z-index: 10; top: 0; left: 0; right: 0;
+  height: calc(var(--safe-top) + var(--bar-h));
+  padding: calc(var(--safe-top) + 14px) var(--pad-r) 0 var(--gutter);
+  background: var(--bg);
+  display: flex; justify-content: space-between; align-items: flex-start;
+  pointer-events: none;
+}
+/* soft fade under the header so cards slide out of view quietly */
+.bar::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 18px;
+  background: linear-gradient(var(--bg), rgba(233, 233, 233, 0));
+}
+.bar-swap { position: relative; flex: 1; height: 100%; }
+.bar-layer {
+  position: absolute; inset: 0;
+  opacity: 0; transition: opacity .28s ease;
+}
+.bar-layer.is-on { opacity: 1; }
+.bar-date {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--muted);
+}
+.bar-time {
+  margin-top: 6px;
+  font-size: 30px; font-weight: 300; letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums; line-height: 1;
+}
+.bar-time small { font-size: 13px; font-weight: 400; letter-spacing: .06em; color: var(--muted); margin-left: 4px; }
+.bar-status {
+  margin-top: 7px;
+  font-family: var(--mono); font-size: 10px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--muted);
+}
+.bar-status.is-now { color: var(--ink); }
+.clock {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .08em;
+  color: var(--muted); font-variant-numeric: tabular-nums;
+  padding-top: 0;
+}
+.clock em { font-style: normal; opacity: .7; }
+
+/* ---------- Left progress rail ---------- */
+.rail {
+  position: fixed; z-index: 11;
+  left: 0; width: var(--gutter);
+  top: calc(var(--safe-top) + var(--bar-h) + 18px);
+  bottom: calc(var(--safe-bottom) + 18px);
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  gap: 0;
+}
+.rail::before {                       /* hairline */
+  content: ""; position: absolute; top: 50%; left: 50%;
+  width: 1px; height: var(--rail-len, 60px); transform: translate(-50%, -50%);
+  background: var(--faint);
+}
+.rail button {
+  position: relative; appearance: none; border: 0; background: none; padding: 0;
+  width: 28px; height: 30px; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.rail button::before {                /* the tick */
+  content: ""; position: absolute; left: 50%; top: 50%;
+  width: 7px; height: 1px; transform: translate(-50%, -50%);
+  background: var(--faint);
+  transition: width .25s ease, height .25s ease, background-color .25s ease;
+}
+.rail button.is-live::before { background: var(--muted); width: 9px; }
+.rail button.is-here::before { width: 3px; height: 14px; background: var(--ink); }
+
+/* ---------- Timeline scroller (snap) ---------- */
+.timeline {
+  position: fixed; inset: 0;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  scrollbar-width: none;
+}
+.timeline::-webkit-scrollbar { display: none; }
+
+.card {
+  height: 100vh; height: 100dvh;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  display: flex; flex-direction: column;
+  padding: calc(var(--safe-top) + var(--bar-h) + 10px) var(--pad-r) calc(var(--safe-bottom) + 22px) var(--gutter);
+  gap: 12px;
+}
+
+.title {
+  margin: 0;
+  font-size: 27px; font-weight: 600; line-height: 1.12; letter-spacing: -.015em;
+  text-wrap: balance;
+}
+.where {
+  margin-top: -4px;
+  font-family: var(--mono); font-size: 11px; line-height: 1.5; letter-spacing: .04em;
+  color: var(--muted);
+}
+.where .note { display: block; }
+
+.photo {
+  flex: 0 0 auto;
+  width: 100%; aspect-ratio: 3 / 2;
+  object-fit: cover; display: block;
+  border-radius: 0;                 /* square corners */
+  background: #d6d6d6;
+  filter: saturate(.9);
+}
+
+/* ---------- Illustrated campus map (pinch / drag zoom) ---------- */
+.map {
+  position: relative; flex: 1 1 auto; min-height: 150px;
+  overflow: hidden; border-radius: 0;   /* square corners */
+  background: var(--bg);
+  touch-action: pan-y;              /* one finger scrolls the page until you pinch */
+  -webkit-user-select: none; user-select: none;
+  cursor: grab;
+}
+.map.is-engaged { touch-action: none; }
+.map-stage {
+  position: absolute; left: 0; top: 0;
+  transform-origin: 0 0; will-change: transform;
+  mix-blend-mode: multiply;         /* paper of the map melts into the gray */
+}
+.map-stage img {
+  display: block; width: 100%; height: 100%;
+  -webkit-user-drag: none; pointer-events: none;
+}
+/* blur effect: a frosted, feathered rim around the map window; center stays sharp */
+.map-blur {
+  position: absolute; inset: 0; pointer-events: none;
+  -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+  -webkit-mask-image: radial-gradient(ellipse 72% 70% at 50% 50%, transparent 55%, #000 100%);
+          mask-image: radial-gradient(ellipse 72% 70% at 50% 50%, transparent 55%, #000 100%);
+}
+.map-fade {                         /* edges dissolve into the paper */
+  position: absolute; inset: 0; pointer-events: none;
+  box-shadow: inset 0 0 18px 10px var(--bg);
+}
+.map-pin {
+  position: absolute; pointer-events: none;
+  border: 2px solid var(--red); border-radius: 50%;   /* the circle itself stays round */
+  background: rgba(225, 37, 27, .10);
+  transform: translate(-50%, -50%);
+}
+/* permanent dorm labels: small dot on the building, hairline leader, mono text */
+.map-label {
+  position: absolute; left: 0; top: 0; width: 0; height: 0;
+  pointer-events: none; will-change: transform;
+}
+.map-label::before {                /* dot on the building */
+  content: ""; position: absolute; left: -2.5px; top: -2.5px;
+  width: 5px; height: 5px; border-radius: 50%; background: #3a3a3a;
+}
+.map-label::after {                 /* short leader */
+  content: ""; position: absolute; left: -.5px; top: -14px;
+  width: 1px; height: 12px; background: #3a3a3a;
+}
+.map-label-text {
+  position: absolute; left: 0; bottom: 14px; transform: translateX(-50%);
+  white-space: nowrap;
+  font-family: var(--mono); font-size: 10px; line-height: 1; letter-spacing: .03em;
+  color: #2e2e2e; background: rgba(233, 233, 233, .88);
+  padding: 2px 4px;
+}
+.map-label.is-below::after { top: 2px; }
+.map-label.is-below .map-label-text { bottom: auto; top: 14px; }
+.map-cap {
+  position: absolute; right: 6px; bottom: 4px; pointer-events: none;
+  font-family: var(--mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted); opacity: .8;
+}
+
+.noscript { padding: 120px 24px; text-align: center; color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  .bar-layer, .rail button::before { transition: none; }
+}
