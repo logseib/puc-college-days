@@ -189,16 +189,21 @@ body {
  * The track is two frames wide and slides horizontally inside the 3:2 wrap. */
 .photo-track {
   position: absolute; inset: 0;
-  display: flex; width: 200%; height: 100%;
+  overflow: hidden;
+}
+/* v9: each photo fills the whole frame on its own and slides by its own
+ * width (iOS Safari mis-sized the old 200%-wide flex track). */
+.photo-track .photo {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
   transform: translateX(0);
   transition: transform 600ms ease;
   will-change: transform;
 }
-.photo-track.is-interior { transform: translateX(-50%); }
-.photo-track .photo {
-  position: relative; inset: auto;
-  flex: 0 0 50%; width: 50%; height: 100%;
-}
+.photo-track .photo:last-child { transform: translateX(100%); }
+.photo-track.is-interior .photo:first-child { transform: translateX(-100%); }
+.photo-track.is-interior .photo:last-child { transform: translateX(0); }
+.photo-track.no-anim .photo { transition: none; }
 .photo-track.no-anim { transition: none; }
 
 /* ---------- Illustrated campus map: v5 feathered rim, taller top fade ---------- */
@@ -307,14 +312,11 @@ body {
   .map.is-pulse .map-flash { animation: none; }
   .scroll-hint.is-pulse { animation: scrollHintFade 900ms ease-out; }
   /* Interior swap becomes a crossfade; the track does not slide. */
-  .photo-track {
-    display: block; width: 100%;
-    transform: none; transition: none;
-  }
-  .photo-track .photo {
-    position: absolute; inset: 0;
-    flex: none; width: 100%; height: 100%;
-    opacity: 1; transition: opacity 600ms ease;
+  .photo-track .photo,
+  .photo-track .photo:last-child,
+  .photo-track.is-interior .photo:first-child,
+  .photo-track.is-interior .photo:last-child {
+    transform: none; opacity: 1; transition: opacity 600ms ease;
   }
   .photo-track .photo:last-child { opacity: 0; }
   .photo-track.is-interior .photo:first-child { opacity: 0; }

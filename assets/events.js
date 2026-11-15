@@ -48,7 +48,7 @@ window.PUC_PLACES = {
   // cross-checked against OpenStreetMap/Nominatim where OSM has the building.
   // Pixel coords were read off the numbered badges on the illustrated map.
   church:     { name: "PUC Church",                 lat: 38.570234, lng: -122.441651, mapX: 1462, mapY: 1335, mapR: 120, img: "puc-church.jpg", interior: "puc-church-interior.webp" },
-  fireside:   { name: "Fireside Room",              sub: "Church Complex · #18 on the campus map", lat: 38.570615, lng: -122.440995, mapX: 1505, mapY: 1185, mapR: 85, img: "puc-fireside.jpg" },
+  fireside:   { name: "Fireside Room (Church complex)", lat: 38.570615, lng: -122.440995, mapX: 1505, mapY: 1185, mapR: 85, img: "puc-fireside.jpg" },
   sabbath:    { name: "Sabbath School Rooms",       sub: "Church Complex", lat: 38.570117, lng: -122.441012, img: "puc-sabbath-school.jpg" },
   dining:     { name: "Dining Commons",             lat: 38.570553, lng: -122.440487, mapX: 1472, mapY: 1058, mapR: 95, img: "puc-dining.jpg" },
   scales:     { name: "Scales Chapel",              sub: "Church Complex", lat: 38.570360, lng: -122.440852, img: "puc-scales.jpg" },

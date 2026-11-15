@@ -115,7 +115,7 @@
     if (!p0.interior) {
       return '<div class="photo-wrap">' + ext + "</div>";
     }
-    const inn = '<img class="photo" alt="' + esc((p0.name || "") + " interior") + '" src="' + IMG_DIR + esc(p0.interior) + '" loading="lazy">';
+    const inn = '<img class="photo" alt="' + esc((p0.name || "") + " interior") + '" src="' + IMG_DIR + esc(p0.interior) + '" decoding="async">';
     return '<div class="photo-wrap"><div class="photo-track">' + ext + inn + "</div></div>";
   }
 
