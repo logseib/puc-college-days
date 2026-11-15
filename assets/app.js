@@ -38,6 +38,12 @@
  *             touch resets the timer. Hidden on the last event. If the
  *             5s photo slide would fire at the same moment, the hint
  *             waits for that 600ms ease to finish.
+ *  6. Full:   (v14) a small expand icon in the map's top-right corner
+ *             turns the map into a full-viewport CSS overlay (100dvh,
+ *             safe-area aware). Pinch/pan/double-tap and the red circles
+ *             keep working. The icon becomes "collapse"; Esc also exits.
+ *             While open : no hints, no nudges, no timeline swipes. On exit
+ *             the map returns to exactly the view it had before opening.
  * ===================================================================== */
 (function () {
   "use strict";
@@ -306,7 +312,9 @@
   const HINT_IDLE = 10000, HINT_AFTER_SLIDE = 800;
   const hintEl = document.getElementById("scroll-hint");
   let hintTimer = 0;
+  let mapFull = false;   // v14: full-screen map open → no hints, nudges or swipes
   function canHint() {
+    if (mapFull) return false;
     const i = arrived >= 0 ? arrived : visibleIndex();
     return i < items.length - 1;
   }
@@ -596,9 +604,56 @@
     el.addEventListener("dblclick", reset);
     window.addEventListener("resize", () => show(active < 0 ? 0 : active, false));
 
-    return { show, bump, reset };
+    // ---- v14: full-screen overlay ----
+    let saved = null;
+    function setFull(on) {
+      on = !!on;
+      if (on === mapFull) return;
+      stopAnim(); t0 = null; touching = false; drag = null; lastTap = 0;
+      if (on) {
+        saved = { s: v.s, x: v.x, y: v.y, active };
+        mapFull = true;
+        clearHint();
+        document.documentElement.classList.add("is-map-full");
+        void el.offsetWidth;                              // new size before framing
+        const home = homeFor(active < 0 ? 0 : active);   // frame the current event's circle(s) in the bigger window
+        if (home) { Object.assign(v, home); apply(); }
+      } else {
+        mapFull = false;
+        document.documentElement.classList.remove("is-map-full");
+        void el.offsetWidth;
+        if (saved && saved.active === active) { v.s = saved.s; v.x = saved.x; v.y = saved.y; apply(); }   // exactly as before
+        else show(active < 0 ? 0 : active, false);
+        saved = null;
+        armHint();
+      }
+    }
+    function isFull() { return mapFull; }
+
+    return { show, bump, reset, setFull, isFull };
   }
   const map = setupMap(document.getElementById("map"));
+
+  /* ---------------- 6. v14: full-screen map toggle ---------------- */
+  const fullBtn = document.getElementById("map-full");
+  // minimal line icons : four outward corner brackets (expand) / four inward corner brackets (collapse)
+  const ICON_EXPAND = '<svg viewBox="0 0 18 18" aria-hidden="true"><path d="M2 6.5V2h4.5M11.5 2H16v4.5M16 11.5V16h-4.5M6.5 16H2v-4.5"/></svg>';
+  const ICON_COLLAPSE = '<svg viewBox="0 0 18 18" aria-hidden="true"><path d="M6.5 2v4.5H2M16 6.5h-4.5V2M11.5 16v-4.5H16M2 11.5h4.5V16"/></svg>';
+  function syncFullBtn() {
+    if (!fullBtn) return;
+    const on = map.isFull();
+    fullBtn.innerHTML = on ? ICON_COLLAPSE : ICON_EXPAND;
+    fullBtn.setAttribute("aria-label", on ? "Exit full screen map" : "Full screen map");
+    fullBtn.setAttribute("aria-pressed", on ? "true" : "false");
+  }
+  function toggleFull(on) { map.setFull(on); syncFullBtn(); }
+  if (fullBtn) {
+    syncFullBtn();
+    fullBtn.addEventListener("click", () => toggleFull(!map.isFull()));
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && map.isFull()) { e.preventDefault(); toggleFull(false); }
+  });
 
   /* ---------------- Status refresh ---------------- */
   function refresh() { showHeader(visibleIndex()); updateRail(); }
@@ -636,5 +691,5 @@
     armHint();
   });
 
-  window.PUC_DEBUG = { now, items, currentIndex, scrollToIndex, map, titleLandingY, titleCenterY, cardH, syncDots, parkDot, armSlide, resetTracks, armHint, fireHint, clearHint, DOT_TRAVEL, HINT_IDLE, dots, timeline, SLIDE_DWELL, nudge };
+  window.PUC_DEBUG = { now, items, currentIndex, scrollToIndex, map, titleLandingY, titleCenterY, cardH, syncDots, parkDot, armSlide, resetTracks, armHint, fireHint, clearHint, DOT_TRAVEL, HINT_IDLE, dots, timeline, SLIDE_DWELL, nudge, toggleFull, canHint };
 })();

@@ -1,5 +1,5 @@
 /* =====================================================================
- * PUC College Days — styles (v12)
+ * PUC College Days — styles (v14 : full-screen map toggle; plus button moved to the header)
  * Light gray paper, dark ink. Sticky header is only the date + clock.
  * Event time + title share one line next to the rail bullet. Photos
  * are 3:2. One fixed map in the bottom half of the screen, with the
@@ -364,20 +364,61 @@ body {
   background: none; border: 0; color: var(--ink);
   font: 300 30px/1 var(--sans); padding: 6px 8px; margin: 0; cursor: pointer;
 }
-/* the plus button: tucked into the soft top-right corner of the map, clear
- * of the header clock, the PINCH TO ZOOM caption (bottom-right) and the
- * centered SWIPE UP hint */
+/* v14: the plus button lives in the header, just left of the clock.
+ * Small and quiet : no fill, muted ink, same 20px line icon. The header
+ * itself ignores taps (pointer-events: none), so the button opts back in. */
+.bar-right { display: flex; align-items: center; gap: 6px; margin-right: -4px; }
+.bar-right .clock { margin-right: 4px; }
 #help {
+  pointer-events: auto;
+  width: 30px; height: 30px; margin: 0; padding: 0;
+  background: none;
+  color: var(--muted); border: 0; border-radius: 0; box-shadow: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+#help:active { color: var(--red); }
+#help svg { display: block; width: 19px; height: 19px; }
+#help svg * { stroke: currentColor; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- v14: full-screen map ----------
+ * A CSS overlay (not the Fullscreen API, which iOS Safari only allows for
+ * video). The toggle sits in the map's top-right corner : the corner the
+ * plus button used to hold, clear of PINCH TO ZOOM (bottom-right), the
+ * SWIPE UP hint (centered above the map) and the rail dots (left). */
+.map-full-btn {
   position: fixed; z-index: 7;
   right: 10px; bottom: calc(var(--map-h) - 44px);
   width: 34px; height: 34px; margin: 0; padding: 0;
   background: rgba(210, 210, 210, .82);
-  color: #3a3a3a; border: 0; border-radius: 0; box-shadow: none;
+  color: var(--ink); border: 0; border-radius: 0; box-shadow: none;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
-#help svg { display: block; width: 20px; height: 20px; }
-#help svg * { stroke: currentColor; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.map-full-btn svg { display: block; width: 18px; height: 18px; }
+.map-full-btn svg * { stroke: currentColor; fill: none; stroke-width: 1.5; stroke-linecap: square; stroke-linejoin: miter; }
+.map-full-btn:active { color: var(--red); }
+
+html.is-map-full .map {
+  z-index: 40;                      /* above the header, dots, hints and the A2HS tip */
+  top: 0; height: 100vh; height: 100dvh;
+  cursor: grab;
+}
+html.is-map-full .map-full-btn {
+  z-index: 41;
+  bottom: auto;
+  top: calc(var(--safe-top) + 10px);
+  right: calc(env(safe-area-inset-right, 0px) + 10px);
+}
+html.is-map-full .map-full-btn::after {   /* one red hairline under the collapse icon : "you are in full screen" */
+  content: ""; position: absolute; left: 8px; right: 8px; bottom: 4px; height: 1px; background: var(--red);
+}
+html.is-map-full .map-cap { bottom: calc(var(--safe-bottom) + 10px); right: calc(env(safe-area-inset-right, 0px) + 10px); }
+html.is-map-full .timeline { overflow: hidden; }                 /* no timeline swipes underneath */
+html.is-map-full .scroll-hint,
+html.is-map-full #a2hs,
+html.is-map-full #help { visibility: hidden; }
+html.is-map-full, html.is-map-full body { overflow: hidden; overscroll-behavior: none; touch-action: none; }
 
 @keyframes scrollHintFade {
   0%, 100% { opacity: 0; }
