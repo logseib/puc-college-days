@@ -1,5 +1,5 @@
 /* =====================================================================
- * PUC College Days — styles (v7)
+ * PUC College Days — styles (v8)
  * Light gray paper, dark ink. Sticky header is only the date + clock.
  * Event time + title share one line next to the rail bullet. Photos
  * are 3:2. One fixed map in the bottom half of the screen, with the
@@ -108,35 +108,27 @@ body {
   scroll-snap-align: start;
   scroll-snap-stop: always;
   display: flex; flex-direction: column;
-  padding: calc(var(--safe-top) + var(--bar-h) + 22px) var(--pad-r) 8px var(--gutter);
+  padding: calc(var(--safe-top) + var(--bar-h) + 22px) var(--pad-r) 22px var(--gutter);
   gap: 12px;
 }
 @supports (height: 1dvh) { :root { --map-h: 47dvh; } }
 
-/* content block: title, location, photo. Outlined in red while the event is live */
+/* content block: title, location, photo. (v8: no red outline) */
 .block {
   position: relative; flex: 0 1 auto; min-height: 0;   /* hugs its content; shrinks (photo first) on short screens */
   display: flex; flex-direction: column; gap: 9px;
   padding: 10px;
-  margin: 0 -10px;                  /* outline sits just outside the text column */
-  border: 2px solid transparent; border-radius: 0;
+  margin: 0 -10px;
+  border: 2px solid transparent; border-radius: 0;   /* transparent border keeps v7 spacing */
 }
-.card.is-current .block { border-color: var(--red); }
-.current-tab {
-  display: none;
-  position: absolute; left: -2px; bottom: 100%;
-  background: var(--red); color: #fff;
-  font-family: var(--mono); font-size: 9.5px; line-height: 1; letter-spacing: .14em; text-transform: uppercase;
-  padding: 4px 6px 3px;
-}
-.card.is-current .current-tab { display: block; }
 
 /* One line: "10:00AM : Worship" — time in the title weight, name lighter.
- * If the name is long it wraps into the column beside the time. */
+ * If the name is long it wraps into the column beside the time.
+ * A compact "RIGHT NOW" tag sits at the end of the first line when live. */
 .title {
   margin: 0;
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto 1fr auto;
   align-items: baseline;
   column-gap: 0;
   font-size: 22px; font-weight: 600; line-height: 1.2; letter-spacing: -.015em;
@@ -145,10 +137,27 @@ body {
 .title .lead { white-space: nowrap; }
 .title .when, .title .sep { font-weight: 600; }
 .title .name { font-weight: 300; min-width: 0; }
+.now-tag {
+  display: none;
+  grid-column: 3;
+  grid-row: 1;
+  align-self: center;
+  margin-left: 8px;
+  background: var(--red);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 9px; font-weight: 600; line-height: 1;
+  letter-spacing: .08em; text-transform: uppercase;
+  padding: 3px 5px 2px;
+  border-radius: 0;                 /* square corners */
+  white-space: nowrap;
+  pointer-events: none;
+}
+.card.is-current .now-tag { display: inline-block; }
 
 .where {
   flex: 0 0 auto;
-  font-family: var(--mono); font-size: 13px; line-height: 1.4; letter-spacing: .01em;
+  font-family: var(--mono); font-size: 15px; line-height: 1.4; letter-spacing: .01em;  /* v8: +2px from 13px */
   color: #262626;
 }
 .where-k { color: var(--muted); }
@@ -171,6 +180,26 @@ body {
   border-radius: 0;                 /* square corners */
   filter: saturate(.9);
 }
+/* Church exterior: shift the 3:2 cover-crop down so the lawn sign is in
+ * frame and the big blue sky is reduced. 85% keeps the sign fully visible
+ * even when the photo wrap shrinks on short screens. */
+.photo.is-church { object-position: center 85%; }
+
+/* Exterior → interior slider (only when a place has an interior photo).
+ * The track is two frames wide and slides horizontally inside the 3:2 wrap. */
+.photo-track {
+  position: absolute; inset: 0;
+  display: flex; width: 200%; height: 100%;
+  transform: translateX(0);
+  transition: transform 600ms ease;
+  will-change: transform;
+}
+.photo-track.is-interior { transform: translateX(-50%); }
+.photo-track .photo {
+  position: relative; inset: auto;
+  flex: 0 0 50%; width: 50%; height: 100%;
+}
+.photo-track.no-anim { transition: none; }
 
 /* ---------- Illustrated campus map: v5 feathered rim, taller top fade ---------- */
 .map {
@@ -238,8 +267,56 @@ body {
   color: var(--muted); opacity: .8;
 }
 
+/* Idle "SWIPE UP" hint: same type as pinch-to-zoom, sits just above the map.
+ * Invisible until it pulses (opacity 0 → .8 → 0, with a slight upward drift). */
+.scroll-hint {
+  position: fixed; z-index: 6;
+  left: 0; right: 0;
+  bottom: calc(var(--map-h) + 8px);
+  pointer-events: none;
+  text-align: center;
+  font-family: var(--mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted);
+  opacity: 0;
+}
+.scroll-hint-arrow {
+  display: inline-block;
+  width: 0; height: 0;
+  border-left: 3px solid transparent;
+  border-right: 3px solid transparent;
+  border-bottom: 5px solid currentColor;
+  margin-right: 5px;
+  vertical-align: 1px;
+  letter-spacing: 0;
+}
+.scroll-hint.is-pulse { animation: scrollHint 900ms ease-out; }
+@keyframes scrollHint {
+  0%   { opacity: 0; transform: translateY(6px); }
+  28%  { opacity: .8; transform: translateY(0); }
+  70%  { opacity: .8; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-4px); }
+}
+
 .noscript { padding: 120px 24px; text-align: center; color: var(--muted); }
 
+@keyframes scrollHintFade {
+  0%, 100% { opacity: 0; }
+  28%, 70% { opacity: .8; }
+}
 @media (prefers-reduced-motion: reduce) {
   .map.is-pulse .map-flash { animation: none; }
+  .scroll-hint.is-pulse { animation: scrollHintFade 900ms ease-out; }
+  /* Interior swap becomes a crossfade; the track does not slide. */
+  .photo-track {
+    display: block; width: 100%;
+    transform: none; transition: none;
+  }
+  .photo-track .photo {
+    position: absolute; inset: 0;
+    flex: none; width: 100%; height: 100%;
+    opacity: 1; transition: opacity 600ms ease;
+  }
+  .photo-track .photo:last-child { opacity: 0; }
+  .photo-track.is-interior .photo:first-child { opacity: 0; }
+  .photo-track.is-interior .photo:last-child { opacity: 1; }
 }

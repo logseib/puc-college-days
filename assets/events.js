@@ -32,7 +32,11 @@
  * assets/img/puc-campus-map.webp.
  * mapX / mapY / mapR = circle center + radius in that image's pixels,
  * read off the numbered labels on the illustration:
- *   #14 Church & Sanctuary, #18 Church Complex (Fireside Room, Scales Chapel).
+ *   #14 Church & Sanctuary, #18 Church Complex (Fireside Room, Scales Chapel),
+ *   #20 Pacific Auditorium (gym), #26 Dining Commons,
+ *   #39 Grainger Hall, #44 Graf Hall.
+ * Off-campus or unsited places (St. Helena, Free Time) have no mapX — the
+ * map then shows the full campus and draws no red circle.
  * Note: the illustration is rotated — north points LEFT, east points UP. */
 window.PUC_MAP = {
   src: "assets/img/puc-campus-map-v5.webp", w: 3145, h: 2046
@@ -42,30 +46,37 @@ window.PUC_PLACES = {
   // Coordinates: PUC's official interactive campus map
   // (puc.edu/about-puc/campus-map, "View on map" data-location values),
   // cross-checked against OpenStreetMap/Nominatim where OSM has the building.
-  church:     { name: "PUC Church",                 lat: 38.570234, lng: -122.441651, mapX: 1462, mapY: 1335, mapR: 120, img: "puc-church.jpg" },
+  // Pixel coords were read off the numbered badges on the illustrated map.
+  church:     { name: "PUC Church",                 lat: 38.570234, lng: -122.441651, mapX: 1462, mapY: 1335, mapR: 120, img: "puc-church.jpg", interior: "puc-church-interior.webp" },
   fireside:   { name: "Fireside Room",              sub: "Church Complex · #18 on the campus map", lat: 38.570615, lng: -122.440995, mapX: 1505, mapY: 1185, mapR: 85, img: "puc-fireside.jpg" },
   sabbath:    { name: "Sabbath School Rooms",       sub: "Church Complex", lat: 38.570117, lng: -122.441012, img: "puc-sabbath-school.jpg" },
-  dining:     { name: "Dining Commons",             lat: 38.570553, lng: -122.440487, img: "puc-dining.jpg" },
+  dining:     { name: "Dining Commons",             lat: 38.570553, lng: -122.440487, mapX: 1472, mapY: 1058, mapR: 95, img: "puc-dining.jpg" },
   scales:     { name: "Scales Chapel",              sub: "Church Complex", lat: 38.570360, lng: -122.440852, img: "puc-scales.jpg" },
   newton:     { name: "Newton Chapel",              sub: "Newton Hall", lat: 38.571866, lng: -122.439473, img: "puc-newton.jpg" },
-  gym:        { name: "PUC Gym (Pacific Auditorium)", lat: 38.568787, lng: -122.441264, img: "puc-gym.jpg" },
+  gym:        { name: "PUC Gym (Pacific Auditorium)", lat: 38.568787, lng: -122.441264, mapX: 1980, mapY: 1242, mapR: 140, img: "puc-gym.jpg" },
   paulin:     { name: "Paulin Recital Hall",        sub: "Paulin Hall", lat: 38.569513, lng: -122.441211, img: "puc-paulin.jpg" },
   utt:        { name: "Utt Center",                 sub: "New wing of Nelson Memorial Library", lat: 38.569530, lng: -122.440122, img: "puc-library-utt.jpg" },
-  grainger:   { name: "Grainger Hall",              sub: "Girls", lat: 38.570972, lng: -122.439145, img: "puc-grainger.jpg" },
-  graf:       { name: "Graf Hall",                  sub: "Boys",  lat: 38.568632, lng: -122.438866, img: "puc-graf.jpg" },
+  grainger:   { name: "Grainger Hall",              sub: "Girls", lat: 38.570972, lng: -122.439145, mapX: 1348, mapY: 765, mapR: 120, img: "puc-grainger.jpg" },
+  graf:       { name: "Graf Hall",                  sub: "Boys",  lat: 38.568632, lng: -122.438866, mapX: 1988, mapY: 710, mapR: 110, img: "puc-graf.jpg" },
   mall:       { name: "Campus Mall",                lat: 38.569889, lng: -122.440449, img: "puc-campus-mall.jpg", radius: 120 },
   airport:    { name: "PUC Airport (Virgil O. Parrett Field)", lat: 38.572059, lng: -122.434216, img: "angwin-scenery.jpg", radius: 90 },
   elmshaven:  { name: "Elmshaven",                  sub: "Ellen G. White's home · 125 Glass Mountain Ln, St. Helena", lat: 38.537060, lng: -122.478762, img: "elmshaven.jpg" },
   sthelena:   { name: "Downtown St. Helena",        sub: "Main Street, St. Helena, CA", lat: 38.504575, lng: -122.469352, img: "sthelena.jpg", radius: 220 },
-  free:       { name: "Your choice (on campus)", lat: 38.569889, lng: -122.440449, img: null, radius: 160 }  // img: null → gradient fallback card
+  free:       { name: "Your choice (on campus)", lat: 38.569889, lng: -122.440449, img: null, radius: 160 }  // img: null → no photo; no mapX → full-campus map, no circle
 };
 
 window.PUC_EVENTS = [
-  // ---------------- Sunday, Nov 15 (first three events only; Monday to be added later) ----------------
-  // Check-in and breakfast overlap (both 9:00–10:00) and sit next door to each other, so they share one card.
-  // Photo: Fireside Room — that's where the hour is spent (breakfast with the pastors).
-  // The map still frames both the church (#14) and Fireside (#18).
-  { id: "sun-checkin",   start: "2026-11-15T09:00", end: "2026-11-15T10:00", title: "Check-in + Breakfast with the Pastors", place: ["church", "fireside"], photo: "fireside", where: "Check-in at PUC Church · Breakfast in Fireside Room" },
+  // ---------------- Sunday, Nov 15 (full day) ----------------
+  // Breakfast only at Fireside (#18). Check-in was dropped from this card.
+  { id: "sun-breakfast", start: "2026-11-15T09:00", end: "2026-11-15T10:00", title: "Breakfast with the Pastors", place: "fireside" },
   { id: "sun-worship",   start: "2026-11-15T10:00", end: "2026-11-15T10:30", title: "Worship",            place: "church" },
-  { id: "sun-welcome",   start: "2026-11-15T10:30", end: "2026-11-15T11:00", title: "Welcome",            place: "church" }
+  { id: "sun-welcome",   start: "2026-11-15T10:30", end: "2026-11-15T11:00", title: "Welcome",            place: "church" },
+  { id: "sun-fair",      start: "2026-11-15T11:00", end: "2026-11-15T12:00", title: "Academic & Service Fair", place: "fireside" },
+  { id: "sun-brunch",    start: "2026-11-15T12:00", end: "2026-11-15T13:00", title: "Brunch",             place: "dining" },
+  { id: "sun-race",      start: "2026-11-15T13:15", end: "2026-11-15T14:45", title: "Amazing Race",       place: "church", note: "Starts at the church" },
+  { id: "sun-sthelena",  start: "2026-11-15T15:00", end: "2026-11-15T17:00", title: "St. Helena Trip",    place: "sthelena", note: "Off campus · ride in your assigned vehicle" },
+  { id: "sun-festival",  start: "2026-11-15T17:00", end: "2026-11-15T19:00", title: "Fall Festival",      place: "gym" },
+  { id: "sun-free",      start: "2026-11-15T19:00", end: "2026-11-15T20:00", title: "Free Time",          place: "free" },
+  { id: "sun-dessert",   start: "2026-11-15T20:00", end: "2026-11-15T21:00", title: "Late Night Dessert Bar", place: "fireside" },
+  { id: "sun-dorms",     start: "2026-11-15T22:00", end: "2026-11-15T23:00", title: "Back to Dorms",      place: ["grainger", "graf"], where: "Girls → Grainger Hall · Boys → Graf Hall" }
 ];

@@ -1,5 +1,5 @@
 /* =====================================================================
- * PUC College Days — app logic (v7, no build step, no framework)
+ * PUC College Days — app logic (v8, no build step, no framework)
  *
  *  1. Time:   PACIFIC wall-clock time. "Wall ms" = Date.UTC(...) of the
  *             Pacific clock reading, so plain number comparisons work.
@@ -9,10 +9,15 @@
  *             ("Sunday, November 15") and the live clock (HH:MMAM).
  *             Visible labels put a space on both sides of a colon
  *             ("10:00AM : Worship", "Location : PUC Church"), except
- *             inside clock times themselves ("10:00").
+ *             inside clock times themselves ("10:00"). Church exteriors
+ *             use object-position 85% so the lawn sign stays in the crop.
+ *             Places with an interior photo (church: Logan Seibold) slide
+ *             exterior → interior inside the 3:2 frame after a 5s dwell
+ *             on the settled card, then keep alternating; swipe away
+ *             resets to the exterior. prefers-reduced-motion crossfades.
  *  3. Now:    on load, jumps to the live event (before the first: first;
- *             after the last: last). Current-event outline + red dot
- *             refresh each minute.
+ *             after the last: last). A compact "RIGHT NOW" tag sits on the title line of the
+ *             live event; the rail dot is red. Both refresh each minute.
  *  Rail:   a fixed fading hairline in the left margin. Dots are fixed
  *             on that rail and driven by scroll position (no time-based
  *             animation). Each bullet travels only ~70px along the line
@@ -28,6 +33,11 @@
  *             cross-fades to its red circle(s). Pinch to zoom, one
  *             finger pans, double-tap resets; a small zoom "bump" after each
  *             settle, plus a brief, very subtle flash so the map feels updated.
+ *  5. Hint:   after 10s idle, a "SWIPE UP" caption (same type as
+ *             "PINCH TO ZOOM") pulses just above the map. Any scroll or
+ *             touch resets the timer. Hidden on the last event. If the
+ *             5s photo slide would fire at the same moment, the hint
+ *             waits for that 600ms ease to finish.
  * ===================================================================== */
 (function () {
   "use strict";
@@ -97,6 +107,18 @@
   const dotsEl = document.getElementById("dots");
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
+  function photoHTML(p0, index) {
+    if (!p0 || !p0.img) return "";
+    const lazy = index ? ' loading="lazy"' : "";
+    const church = p0.img === "puc-church.jpg" ? " is-church" : "";
+    const ext = '<img class="photo' + church + '" alt="' + esc(p0.name || "") + '" src="' + IMG_DIR + esc(p0.img) + '"' + lazy + ">";
+    if (!p0.interior) {
+      return '<div class="photo-wrap">' + ext + "</div>";
+    }
+    const inn = '<img class="photo" alt="' + esc((p0.name || "") + " interior") + '" src="' + IMG_DIR + esc(p0.interior) + '" loading="lazy">';
+    return '<div class="photo-wrap"><div class="photo-track">' + ext + inn + "</div></div>";
+  }
+
   items.forEach(it => {
     const p0 = it.photo || {};
     const where = it.where || it.places.map(p => p.name).join(" · ");
@@ -106,14 +128,14 @@
     card.dataset.index = it.index;
     card.innerHTML =
       '<div class="block">' +
-        '<div class="current-tab" aria-hidden="true">Current event</div>' +
         '<h2 class="title">' +
           '<span class="lead"><span class="when">' + esc(fmtStart(it.start)) + '</span><span class="sep"> :&nbsp;</span></span>' +
           '<span class="name">' + esc(it.title) + "</span>" +
+          '<span class="now-tag" aria-hidden="true">Right now</span>' +
         "</h2>" +
         '<div class="where"><span class="where-k">Location :</span> ' + esc(where) + (sub ? '<span class="note">' + esc(sub) + "</span>" : "") +
           (it.note ? '<span class="note">' + esc(it.note) + "</span>" : "") + "</div>" +
-        (p0.img ? '<div class="photo-wrap"><img class="photo" alt="' + esc(p0.name || "") + '" src="' + IMG_DIR + esc(p0.img) + '"' + (it.index ? ' loading="lazy"' : "") + "></div>" : "") +
+        photoHTML(p0, it.index) +
       "</div>";
     timeline.appendChild(card);
   });
@@ -164,7 +186,8 @@
     cards.forEach((c, i) => {
       const isLive = t >= items[i].start && t < items[i].end;
       c.classList.toggle("is-current", isLive);
-      c.querySelector(".current-tab").setAttribute("aria-hidden", isLive ? "false" : "true");
+      const tag = c.querySelector(".now-tag");
+      if (tag) tag.setAttribute("aria-hidden", isLive ? "false" : "true");
       dots[i].classList.toggle("is-live", isLive);
     });
   }
@@ -246,17 +269,91 @@
     });
   }
 
+  /* Exterior/interior photo slider: 5s dwell on the settled card, 600ms
+   * ease (or crossfade if prefers-reduced-motion). Instantly reset to the
+   * exterior when the card is no longer the settled one. */
+  const SLIDE_DWELL = 5000;
+  let slideTimer = 0, slideCard = -1;
+  function resetTracks(instant) {
+    clearTimeout(slideTimer);
+    slideTimer = 0;
+    slideCard = -1;
+    document.querySelectorAll(".photo-track").forEach(t => {
+      if (instant) t.classList.add("no-anim");
+      t.classList.remove("is-interior");
+      if (instant) { void t.offsetWidth; t.classList.remove("no-anim"); }
+    });
+  }
+  function armSlide(i) {
+    clearTimeout(slideTimer);
+    slideTimer = 0;
+    if (i !== slideCard) {
+      resetTracks(true);
+      slideCard = i;
+    }
+    const track = cards[i] && cards[i].querySelector(".photo-track");
+    if (!track) { slideCard = -1; return; }
+    slideTimer = setTimeout(function tick() {
+      track.classList.toggle("is-interior");
+      slideTimer = setTimeout(tick, SLIDE_DWELL);
+    }, SLIDE_DWELL);
+  }
+
+  /* Idle "SWIPE UP" hint: same type as pinch-to-zoom. Pulse after 10s
+   * with no scroll/touch, then again every 10s while still idle. Skip
+   * the last event (nowhere to swipe). If a photo slide is also due,
+   * wait 800ms so the two motions don't overlap. */
+  const HINT_IDLE = 10000, HINT_AFTER_SLIDE = 800;
+  const hintEl = document.getElementById("scroll-hint");
+  let hintTimer = 0;
+  function canHint() {
+    const i = arrived >= 0 ? arrived : visibleIndex();
+    return i < items.length - 1;
+  }
+  function clearHint() {
+    clearTimeout(hintTimer);
+    hintTimer = 0;
+    if (hintEl) hintEl.classList.remove("is-pulse");
+  }
+  function armHint(opts) {
+    clearTimeout(hintTimer);
+    hintTimer = 0;
+    // keepPulse: we just started the animation and only want to schedule the next 10s
+    if (hintEl && !(opts && opts.keepPulse)) hintEl.classList.remove("is-pulse");
+    if (!canHint()) return;
+    hintTimer = setTimeout(fireHint, HINT_IDLE);
+  }
+  function fireHint() {
+    if (!canHint() || !hintEl) return;
+    const track = cards[arrived] && cards[arrived].querySelector(".photo-track");
+    const wait = (track && !reduceMotion) ? HINT_AFTER_SLIDE : 0;
+    const show = () => {
+      if (!canHint()) { armHint(); return; }
+      hintEl.classList.remove("is-pulse");
+      void hintEl.offsetWidth;
+      hintEl.classList.add("is-pulse");
+      armHint({ keepPulse: true });
+    };
+    if (wait) hintTimer = setTimeout(show, wait);
+    else show();
+  }
+
   timeline.addEventListener("scroll", () => {
     if (raf) return;
     raf = requestAnimationFrame(() => {
       raf = 0;
       const v = visibleIndex();
       showHeader(v);
-      if (v !== lastVis) { lastVis = v; map.show(v, true); }   // map glides once the next card is the majority
+      if (v !== lastVis) {
+        lastVis = v;
+        map.show(v, true);   // map glides once the next card is the majority
+        if (v !== slideCard) resetTracks(true);   // swipe away: snap back to the exterior
+      }
       syncDots();
     });
     clearTimeout(settleTimer);
     settleTimer = setTimeout(onSettle, 140);   // scroll/snap has come to rest
+    armHint();                                 // any scroll resets the 10s idle hint
   }, { passive: true });
 
   function onSettle() {
@@ -268,6 +365,8 @@
     arrived = i;
     lastVis = i;
     parkDot(i);
+    armSlide(i);
+    armHint();
     if (changed && !first) map.bump({ pulse: true });   // bump + pulse together after a real swipe
   }
 
@@ -473,17 +572,24 @@
     arrived = start;
     map.show(start, false);
     parkDot(start);
+    armSlide(start);
+    armHint();
     setTimeout(() => { map.bump(); }, 450);   // first-load zoom hint only; no flash
   });
 
   setInterval(tickClock, 1000);
   setTimeout(function loop() { refresh(); setTimeout(loop, MIN - (now() % MIN)); }, MIN - (now() % MIN));
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) { refresh(); tickClock(); } });
+  function onInteract() { armHint(); }
+  ["pointerdown", "touchstart", "wheel"].forEach(ev => {
+    document.addEventListener(ev, onInteract, { passive: true });
+  });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { refresh(); tickClock(); armHint(); } });
   window.addEventListener("resize", () => {
     const i = visibleIndex();
     scrollToIndex(i, false);
     parkDot(arrived >= 0 ? arrived : i);
+    armHint();
   });
 
-  window.PUC_DEBUG = { now, items, currentIndex, scrollToIndex, map, titleLandingY, titleCenterY, cardH, syncDots, parkDot, DOT_TRAVEL, dots, timeline };
+  window.PUC_DEBUG = { now, items, currentIndex, scrollToIndex, map, titleLandingY, titleCenterY, cardH, syncDots, parkDot, armSlide, resetTracks, armHint, fireHint, clearHint, DOT_TRAVEL, HINT_IDLE, dots, timeline, SLIDE_DWELL };
 })();
