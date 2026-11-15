@@ -1,9 +1,10 @@
 /* =====================================================================
- * PUC College Days — styles (v6)
+ * PUC College Days — styles (v7)
  * Light gray paper, dark ink. Sticky header is only the date + clock.
  * Event time + title share one line next to the rail bullet. Photos
- * are 3:2. One fixed map in the bottom half of the screen.
- * No rounded corners on images or the map.
+ * are 3:2. One fixed map in the bottom half of the screen, with the
+ * v5 feathered rim and a slightly taller fade on the top edge.
+ * Cards are sized to the space above the map. No rounded corners.
  * ===================================================================== */
 
 :root {
@@ -17,13 +18,15 @@
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --bar-h: 44px;          /* date + clock only */
-  --map-h: 47vh;          /* v6: almost half the page */
-  --seam-h: 120px;        /* dreamy blur/fade band straddling the map's top edge */
-  --seam-overlap: 80px;   /* how far the band and the scroller reach down onto the map */
+  --map-h: 47vh;          /* almost half the page */
   --gutter: 34px;         /* equal left/right margin; the rail sits in the left one */
   --pad-r: var(--gutter);
   --rail-x: 14px;
   --dot: 10px;
+  /* v5 inset fade is blur 24px + spread 14px ≈ 38px on every edge.
+     v7 keeps that rim and makes only the top edge ~1.5× taller (57px). */
+  --map-fade: 38px;
+  --map-fade-top: 57px;
 }
 
 * { box-sizing: border-box; }
@@ -90,10 +93,8 @@ body {
 
 /* ---------- Timeline scroller (snap) ---------- */
 .timeline {
-  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-  /* Full viewport so a card can travel under the map and dissolve — no mid-map clip.
-     The map (z-index 5) still wins touches over the map area. */
-  z-index: 1;
+  position: fixed; top: 0; left: 0; right: 0;
+  bottom: var(--map-h);             /* the scroller ends above the fixed map */
   overflow-y: auto;
   scroll-snap-type: y mandatory;
   -webkit-overflow-scrolling: touch;
@@ -101,16 +102,9 @@ body {
   scrollbar-width: none;
 }
 .timeline::-webkit-scrollbar { display: none; }
-.timeline::after {
-  content: "";
-  display: block;
-  height: var(--map-h);
-  pointer-events: none;
-}
 
 .card {
-  /* one card = the space above the map; ::after holds the map-sized spacer */
-  height: calc(100% - var(--map-h));
+  height: 100%;                     /* one card = the space above the map */
   scroll-snap-align: start;
   scroll-snap-stop: always;
   display: flex; flex-direction: column;
@@ -178,92 +172,15 @@ body {
   filter: saturate(.9);
 }
 
-/* ---------- Seam: scrolling cards melt into the map with no hard edge ----------
- * A fixed band straddles the map's top. Backdrop-filter is on the INNER node;
- * the mask is on the WRAPPER. That pairing is what still blurs on iOS Safari,
- * which often drops backdrop-filter when it's on the same element as mask-image.
- * Also keep the -webkit- prefixes (Safari has used them since iOS 9).
- */
-.seam {
-  position: fixed; z-index: 6; left: 0; right: 0;
-  bottom: calc(var(--map-h) - var(--seam-overlap));
-  height: var(--seam-h);
-  pointer-events: none;
-}
-.seam-blur-wrap {
-  position: absolute; left: 0; right: 0; bottom: 0;
-}
-.seam-blur {
-  position: absolute; inset: 0;
-  transform: translateZ(0);         /* stacking context; helps Safari sample the backdrop */
-}
-.seam-blur-wrap--soft {
-  top: 0; height: 100%;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 58%, #000 100%);
-          mask-image: linear-gradient(to bottom, transparent 0%, #000 58%, #000 100%);
-}
-.seam-blur-wrap--soft .seam-blur {
-  -webkit-backdrop-filter: blur(12px);
-          backdrop-filter: blur(12px);
-}
-.seam-blur-wrap--strong {
-  top: auto; height: 78%;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 70%, #000 100%);
-          mask-image: linear-gradient(to bottom, transparent 0%, #000 70%, #000 100%);
-}
-.seam-blur-wrap--strong .seam-blur {
-  -webkit-backdrop-filter: blur(18px);
-          backdrop-filter: blur(18px);
-}
-.seam-fade {
-  position: absolute; inset: 0;
-  background: linear-gradient(
-    to bottom,
-    rgba(210, 210, 210, 0) 0%,
-    rgba(210, 210, 210, 0.12) 36%,
-    rgba(210, 210, 210, 0.48) 72%,
-    rgba(210, 210, 210, 0.82) 100%
-  );
-}
-
-/* Solid paper behind the map (z-index 4, under the map, over the cards).
- * Transparent only at the top so scrolling content can melt through the seam;
- * everywhere else it hides the next card, which would otherwise show through
- * the map's multiply blend. */
-.map-paper {
-  position: fixed; z-index: 4; left: 0; right: 0; bottom: 0;
-  height: var(--map-h);
-  pointer-events: none;
-  background: var(--bg);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 52px, #000 100%);
-          mask-image: linear-gradient(to bottom, transparent 0%, #000 52px, #000 100%);
-}
-
-/* ---------- Illustrated campus map: a dreamy, edgeless window ---------- */
+/* ---------- Illustrated campus map: v5 feathered rim, taller top fade ---------- */
 .map {
   position: fixed; z-index: 5; left: 0; right: 0; bottom: 0;
   height: var(--map-h);
   overflow: hidden; border-radius: 0;   /* square corners */
-  background: transparent;              /* no hard rectangle of paper */
+  background: var(--bg);
   touch-action: none;               /* outside the scroller: one finger pans, two pinch */
   -webkit-user-select: none; user-select: none;
   cursor: grab;
-  /* All four edges dissolve before the box ends, so no line is visible.
-     Extra-long fade at the top (~112px) meets the seam. Intersect two
-     linear masks; -webkit-mask-composite: source-in is the Safari equivalent
-     of mask-composite: intersect. */
-  -webkit-mask-image:
-    linear-gradient(to bottom, transparent 0%, #000 var(--seam-h), #000 calc(100% - 96px), transparent 100%),
-    linear-gradient(to right,  transparent 0%, #000 96px,          #000 calc(100% - 96px), transparent 100%);
-          mask-image:
-    linear-gradient(to bottom, transparent 0%, #000 var(--seam-h), #000 calc(100% - 96px), transparent 100%),
-    linear-gradient(to right,  transparent 0%, #000 96px,          #000 calc(100% - 96px), transparent 100%);
-  -webkit-mask-size: 100% 100%;
-          mask-size: 100% 100%;
-  -webkit-mask-repeat: no-repeat;
-          mask-repeat: no-repeat;
-  -webkit-mask-composite: source-in;
-          mask-composite: intersect;
 }
 .map-stage {
   position: absolute; left: 0; top: 0;
@@ -274,22 +191,27 @@ body {
   display: block; width: 100%; height: 100%;
   -webkit-user-drag: none; pointer-events: none;
 }
-/* Dreamy rim: blur ramps up toward every edge; the center stays sharp. */
+/* v5 blur: a frosted, feathered rim around the map window; center stays sharp */
 .map-blur {
   position: absolute; inset: 0; pointer-events: none;
-  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
-  -webkit-mask-image: radial-gradient(ellipse 68% 64% at 50% 54%, transparent 18%, #000 80%);
-          mask-image: radial-gradient(ellipse 68% 64% at 50% 54%, transparent 18%, #000 80%);
+  -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+  -webkit-mask-image: radial-gradient(ellipse 72% 70% at 50% 50%, transparent 39%, #000 100%);
+          mask-image: radial-gradient(ellipse 72% 70% at 50% 50%, transparent 39%, #000 100%);
 }
-/* Soft paper wash so ink never reaches the box edge (sides + bottom go fully
-   to --bg; the top stays mostly clear so scrolling content can show through). */
+/* v7: only the top edge gets a little more blur, matching the taller paper fade */
+.map-blur-top {
+  position: absolute; left: 0; right: 0; top: 0;
+  height: var(--map-fade-top);
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 28%, transparent 100%);
+          mask-image: linear-gradient(to bottom, #000 0%, #000 28%, transparent 100%);
+}
+/* v5 inset paper fade on every edge, plus a ~1.5× taller dissolve at the top */
 .map-fade {
   position: absolute; inset: 0; pointer-events: none;
-  background:
-    linear-gradient(to bottom, rgba(210,210,210,0) 0%, rgba(210,210,210,0) 10%, rgba(210,210,210,0.22) 22%, rgba(210,210,210,0) 42%),
-    linear-gradient(to top,    var(--bg) 0%, rgba(210,210,210,0) 110px),
-    linear-gradient(to right,  var(--bg) 0%, rgba(210,210,210,0) 110px),
-    linear-gradient(to left,   var(--bg) 0%, rgba(210,210,210,0) 110px);
+  box-shadow: inset 0 0 24px 14px var(--bg);
+  background: linear-gradient(to bottom, var(--bg) 0, rgba(210, 210, 210, 0) var(--map-fade-top));
 }
 /* brief, very subtle flash when the map updates after a scroll settles */
 .map-flash {
@@ -311,7 +233,7 @@ body {
 }
 .map-pin.is-on { opacity: 1; }
 .map-cap {
-  position: absolute; right: 10px; bottom: 18px; pointer-events: none;
+  position: absolute; right: 8px; bottom: 8px; pointer-events: none;
   font-family: var(--mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
   color: var(--muted); opacity: .8;
 }

@@ -1,5 +1,5 @@
 /* =====================================================================
- * PUC College Days — app logic (v6, no build step, no framework)
+ * PUC College Days — app logic (v7, no build step, no framework)
  *
  *  1. Time:   PACIFIC wall-clock time. "Wall ms" = Date.UTC(...) of the
  *             Pacific clock reading, so plain number comparisons work.
@@ -7,18 +7,25 @@
  *  2. Render: one snap card per event (start time + title on one line,
  *             place, 3:2 photo). The fixed header is only the date
  *             ("Sunday, November 15") and the live clock (HH:MMAM).
+ *             Visible labels put a space on both sides of a colon
+ *             ("10:00AM : Worship", "Location : PUC Church"), except
+ *             inside clock times themselves ("10:00").
  *  3. Now:    on load, jumps to the live event (before the first: first;
  *             after the last: last). Current-event outline + red dot
  *             refresh each minute.
  *  Rail:   a fixed fading hairline in the left margin. Dots are fixed
- *             on that rail: the incoming dot fades in from 70px below
- *             its landing (level with the new title) as a swipe starts,
- *             and glides up to land with the title. The outgoing dot
- *             rides its title up and out. Red when the event is live.
+ *             on that rail and driven by scroll position (no time-based
+ *             animation). Each bullet travels only ~70px along the line
+ *             while its card travels a full screen (parallax scale =
+ *             70/cardHeight). Incoming: starts 70px below the title line
+ *             at opacity 0 and lands on the title at opacity 1. Outgoing:
+ *             moves up 70px and fades 1→0. Red when the event is live.
  *  4. Map:    ONE fixed map in the bottom half (PUC's illustrated PDF map,
  *             with Grainger/Graf tags baked into the image so they scale with pinch).
- *             When the active event changes it glides (~500 ms) to that event's
- *             place and cross-fades to its red circle(s). Pinch to zoom, one
+ *             Edge treatment is the v5 feathered rim, with a slightly
+ *             taller fade on the top edge only. When the active event
+ *             changes it glides (~500 ms) to that event's place and
+ *             cross-fades to its red circle(s). Pinch to zoom, one
  *             finger pans, double-tap resets; a small zoom "bump" after each
  *             settle, plus a brief, very subtle flash so the map feels updated.
  * ===================================================================== */
@@ -32,7 +39,7 @@
   const IMG_DIR = "assets/img/";
   const MIN = 60 * 1000;
   const DOT = 10;            // matches --dot in CSS
-  const DOT_IN_FROM = 70;    // incoming dot starts this many px below its landing
+  const DOT_TRAVEL = 70;     // parallax travel along the rail for a full card swipe
   const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   /* ---------------- 1. Time ---------------- */
@@ -104,7 +111,7 @@
           '<span class="lead"><span class="when">' + esc(fmtStart(it.start)) + '</span><span class="sep"> :&nbsp;</span></span>' +
           '<span class="name">' + esc(it.title) + "</span>" +
         "</h2>" +
-        '<div class="where"><span class="where-k">Location:</span> ' + esc(where) + (sub ? '<span class="note">' + esc(sub) + "</span>" : "") +
+        '<div class="where"><span class="where-k">Location :</span> ' + esc(where) + (sub ? '<span class="note">' + esc(sub) + "</span>" : "") +
           (it.note ? '<span class="note">' + esc(it.note) + "</span>" : "") + "</div>" +
         (p0.img ? '<div class="photo-wrap"><img class="photo" alt="' + esc(p0.name || "") + '" src="' + IMG_DIR + esc(p0.img) + '"' + (it.index ? ' loading="lazy"' : "") + "></div>" : "") +
       "</div>";
@@ -141,8 +148,8 @@
     const lineHeight = tcs.lineHeight === "normal" ? fontSize * 1.2 : parseFloat(tcs.lineHeight);
     return title.getBoundingClientRect().top + lineHeight / 2;
   }
-  function setDotCenter(el, y, extraY) {
-    el.style.top = (y - DOT / 2 + (extraY || 0)) + "px";
+  function setDotCenter(el, y) {
+    el.style.top = (y - DOT / 2) + "px";
   }
 
   /* ---------------- Sticky header (date only) ---------------- */
@@ -182,46 +189,59 @@
 
   let settleTimer = 0, arrived = -1, lastVis = -1, raf = 0;
 
-  const easeOut = p => 1 - Math.pow(1 - p, 2);
-
-  /** Place dots for the current scroll position relative to the last settled card. */
+  /** Continuous parallax: each dot travels DOT_TRAVEL px over a full card swipe.
+   *  Position and opacity are a linear function of scroll progress (no time-based animation).
+   *  progress 0 (settled on i):   i at the title, opacity 1
+   *  progress 0→1 (i → i+1):     i moves up DOT_TRAVEL and fades 1→0;
+   *                               i+1 starts DOT_TRAVEL below the title at opacity 0
+   *                               and lands on the title at opacity 1.
+   *  The same function runs backward when scrolling up to a previous card. */
   function syncDots() {
-    const h = cardH();
+    const h = cardH() || 1;
     const land = titleLandingY();
-    const delta = timeline.scrollTop - arrived * h;
-    const dir = delta >= 0 ? 1 : -1;
-    const next = arrived + dir;
-    const progress = arrived < 0 ? 1 : Math.min(1, Math.abs(delta) / h);
+    const n = items.length;
+    const maxScroll = Math.max(0, (n - 1) * h);
+    const scroll = Math.max(0, Math.min(maxScroll, timeline.scrollTop));
+    const raw = scroll / h;
+    const i0 = Math.max(0, Math.min(n - 1, Math.floor(raw + 1e-9)));
+    const i1 = Math.min(n - 1, i0 + 1);
+    let p = (i0 === i1) ? 0 : raw - i0;
+    if (p < 1e-4) p = 0;
+    if (p > 1 - 1e-4) p = 1;
 
-    dots.forEach((d, i) => {
+    dots.forEach((d) => {
+      setDotCenter(d, land);
+      d.style.transform = "translateY(0px)";
       d.style.opacity = "0";
-      d.style.transform = "none";
     });
 
-    if (arrived < 0) return;
+    if (p === 0 || i0 === i1) {
+      const d = dots[i0];
+      if (d) { d.style.transform = "translateY(0px)"; d.style.opacity = "1"; }
+      return;
+    }
+    if (p === 1) {
+      const d = dots[i1];
+      if (d) { d.style.transform = "translateY(0px)"; d.style.opacity = "1"; }
+      return;
+    }
 
-    // Outgoing (or still-settled) dot: ride its title up/down and out.
-    const outY = Math.abs(delta) < 1 ? land : titleCenterY(arrived);
-    setDotCenter(dots[arrived], outY, 0);
-    // Fade only once it's clearly leaving, so a tiny rubber-band doesn't blink it.
-    const outFade = reduceMotion ? (progress > 0.5 ? 0 : 1) : Math.max(0, 1 - progress / 0.85);
-    dots[arrived].style.opacity = String(outFade);
-
-    if (next !== arrived && next >= 0 && next < items.length) {
-      // Incoming: starts 70px below the landing and glides up as the swipe progresses.
-      // Opacity comes up early so it "fades into view as the scroll starts."
-      const p = reduceMotion ? (progress > 0.5 ? 1 : 0) : progress;
-      const extra = DOT_IN_FROM * (1 - easeOut(p));
-      const fade = reduceMotion ? (p >= 1 ? 1 : 0) : Math.min(1, p / 0.35);
-      setDotCenter(dots[next], land, extra);
-      dots[next].style.opacity = String(fade);
+    const out = dots[i0], inn = dots[i1];
+    if (out) {
+      out.style.transform = "translateY(" + (-DOT_TRAVEL * p) + "px)";
+      out.style.opacity = String(1 - p);
+    }
+    if (inn) {
+      inn.style.transform = "translateY(" + (DOT_TRAVEL * (1 - p)) + "px)";
+      inn.style.opacity = String(p);
     }
   }
 
   function parkDot(i) {
+    const land = titleLandingY();
     dots.forEach((d, k) => {
-      setDotCenter(d, titleLandingY(), 0);
-      d.style.transform = "none";
+      setDotCenter(d, land);
+      d.style.transform = "translateY(0px)";
       d.style.opacity = k === i ? "1" : "0";
     });
   }
@@ -357,7 +377,7 @@
       if (!items[i]) return;
       const names = items[i].places.map(p => p.name);
       pins.forEach(({ p, d }) => d.classList.toggle("is-on", names.indexOf(p.name) >= 0));
-      el.setAttribute("aria-label", "Campus map: " + (items[i].where || names.join(", ")));
+      el.setAttribute("aria-label", "Campus map : " + (items[i].where || names.join(", ")));
       active = i;
       const home = homeFor(i); if (!home) return;
       if (animate) glideTo(home, 500);
@@ -465,5 +485,5 @@
     parkDot(arrived >= 0 ? arrived : i);
   });
 
-  window.PUC_DEBUG = { now, items, currentIndex, scrollToIndex, map, titleLandingY, titleCenterY };
+  window.PUC_DEBUG = { now, items, currentIndex, scrollToIndex, map, titleLandingY, titleCenterY, cardH, syncDots, parkDot, DOT_TRAVEL, dots, timeline };
 })();
