@@ -1,0 +1,230 @@
+/* =====================================================================
+ * PUC College Days — styles (v2: light, quiet, one day)
+ * Light gray paper, dark ink. Sticky header (date + time) that
+ * cross-fades; title / photo / map snap one event per swipe.
+ * No rounded corners on images or the map.
+ * ===================================================================== */
+
+:root {
+  --bg: #d2d2d2;            /* v3: 10% darker than #e9e9e9 */
+  --ink: #161616;
+  --muted: #5f5f5f;
+  --faint: #a6a6a6;
+  --red: #e1251b;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --bar-h: 62px;          /* sticky header height (below the safe area) */
+  --map-h: 33.333vh;      /* map = bottom third of the screen */
+  --gutter: 34px;         /* equal left/right margin; the rail sits in the left one */
+  --pad-r: var(--gutter);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); }
+body {
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;                 /* the timeline is the only scroller */
+  overscroll-behavior: none;
+}
+
+/* ---------- Sticky header ---------- */
+.bar {
+  position: fixed; z-index: 10; top: 0; left: 0; right: 0;
+  height: calc(var(--safe-top) + var(--bar-h));
+  padding: calc(var(--safe-top) + 14px) var(--pad-r) 0 var(--gutter);
+  background: var(--bg);
+  display: flex; justify-content: space-between; align-items: flex-start;
+  pointer-events: none;
+}
+/* soft fade under the header so cards slide out of view quietly */
+.bar::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 18px;
+  background: linear-gradient(var(--bg), rgba(210, 210, 210, 0));
+}
+.bar-swap { position: relative; flex: 1; height: 100%; }
+.bar-layer {
+  position: absolute; inset: 0;
+  opacity: 0; transition: opacity .28s ease;
+}
+.bar-layer.is-on { opacity: 1; }
+.bar-date {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--muted);
+}
+.bar-time {
+  margin-top: 6px;
+  font-size: 30px; font-weight: 300; letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums; line-height: 1;
+}
+.bar-time small { font-size: 13px; font-weight: 400; letter-spacing: .06em; color: var(--muted); margin-left: 4px; }
+.clock {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .08em;
+  color: var(--muted); font-variant-numeric: tabular-nums;
+  padding-top: 0;
+}
+.clock em { font-style: normal; opacity: .7; }
+
+/* ---------- Left rail: fixed hairline that fades out top + bottom ---------- */
+:root { --rail-x: 14px; --dot: 10px; }
+.rail {
+  position: fixed; z-index: 0; pointer-events: none;
+  left: calc(var(--rail-x) - .5px); width: 1px;
+  top: calc(var(--safe-top) + var(--bar-h) + 4px);
+  bottom: calc(var(--map-h) + 6px);           /* stops above the full-width map */
+  background: #7d7d7d;
+  -webkit-mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent);
+          mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent);
+}
+
+/* ---------- Timeline scroller (snap) ---------- */
+.timeline {
+  position: fixed; top: 0; left: 0; right: 0;
+  bottom: var(--map-h);             /* the scroller ends above the fixed map */
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  scrollbar-width: none;
+}
+.timeline::-webkit-scrollbar { display: none; }
+
+.card {
+  height: 100%;                     /* one card = the space above the map */
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  display: flex; flex-direction: column;
+  padding: calc(var(--safe-top) + var(--bar-h) + 22px) var(--pad-r) 14px var(--gutter);
+  gap: 12px;
+}
+@supports (height: 1dvh) { :root { --map-h: 33.333dvh; } }
+
+/* content block: title, location, photo. Outlined in red while the event is live */
+.block {
+  position: relative; flex: 0 1 auto; min-height: 0;   /* hugs its content; shrinks (photo first) on short screens */
+  display: flex; flex-direction: column; gap: 9px;
+  padding: 10px;
+  margin: 0 -10px;                  /* outline sits just outside the text column */
+  border: 2px solid transparent; border-radius: 0;
+}
+.card.is-current .block { border-color: var(--red); }
+.current-tab {
+  display: none;
+  position: absolute; left: -2px; bottom: 100%;
+  background: var(--red); color: #fff;
+  font-family: var(--mono); font-size: 9.5px; line-height: 1; letter-spacing: .14em; text-transform: uppercase;
+  padding: 4px 6px 3px;
+}
+.card.is-current .current-tab { display: block; }
+
+.title {
+  position: relative;
+  margin: 0;
+  font-size: 26px; font-weight: 600; line-height: 1.12; letter-spacing: -.015em;
+  flex: 0 0 auto;
+  text-wrap: balance;
+}
+/* bullet dot: lives in the card, in the left margin on the rail, centered on the title's first line */
+.dot {
+  position: absolute;
+  /* title's left edge sits at gutter + 2px (block margin -10 + border 2 + padding 10) */
+  left: calc(var(--rail-x) - var(--gutter) - 2px - var(--dot) / 2);
+  top: calc(.56em - var(--dot) / 2);          /* line-height 1.12 → first-line center = .56em */
+  width: var(--dot); height: var(--dot); border-radius: 50%;
+  background: var(--ink);
+  opacity: 0; transform: translateY(7px);
+  transition: opacity .38s ease, transform .45s cubic-bezier(.2, .8, .2, 1), background-color .25s ease;
+}
+.card.is-arrived .dot { opacity: 1; transform: none; }
+.card.is-current .dot { background: var(--red); }
+
+.where {
+  flex: 0 0 auto;
+  font-family: var(--mono); font-size: 13px; line-height: 1.4; letter-spacing: .01em;
+  color: #262626;
+}
+.where-k { color: var(--muted); }
+.where .note { display: block; }
+
+.photo {
+  flex: 1 1 auto; min-height: 0;   /* the photo gives up height first on short screens */
+  width: 100%; max-height: 62vw;
+  object-fit: cover; display: block;
+  border-radius: 0;                 /* square corners */
+  background: #c4c4c4;
+  filter: saturate(.9);
+}
+
+/* ---------- Illustrated campus map: ONE fixed map, bottom third, edge to edge ---------- */
+.map {
+  position: fixed; z-index: 5; left: 0; right: 0; bottom: 0;
+  height: var(--map-h);
+  overflow: hidden; border-radius: 0;   /* square corners */
+  background: var(--bg);
+  touch-action: none;               /* outside the scroller: one finger pans, two pinch */
+  -webkit-user-select: none; user-select: none;
+  cursor: grab;
+}
+.map-stage {
+  position: absolute; left: 0; top: 0;
+  transform-origin: 0 0; will-change: transform;
+  mix-blend-mode: multiply;         /* paper of the map melts into the gray */
+}
+.map-stage img {
+  display: block; width: 100%; height: 100%;
+  -webkit-user-drag: none; pointer-events: none;
+}
+/* blur effect: a frosted, feathered rim around the map window; center stays sharp */
+.map-blur {
+  position: absolute; inset: 0; pointer-events: none;
+  -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+  -webkit-mask-image: radial-gradient(ellipse 72% 70% at 50% 50%, transparent 39%, #000 100%);   /* v4: rim ~35% wider */
+          mask-image: radial-gradient(ellipse 72% 70% at 50% 50%, transparent 39%, #000 100%);
+}
+.map-fade {                         /* edges dissolve into the paper */
+  position: absolute; inset: 0; pointer-events: none;
+  box-shadow: inset 0 0 24px 14px var(--bg);   /* v4: ~35% wider than 18px/10px */
+}
+.map-pin {
+  position: absolute; pointer-events: none;
+  border: 2px solid var(--red); border-radius: 50%;   /* the circle itself stays round */
+  background: rgba(225, 37, 27, .10);
+  transform: translate(-50%, -50%);
+  opacity: 0; transition: opacity .35s ease;   /* circles cross-fade between events */
+}
+.map-pin.is-on { opacity: 1; }
+/* permanent dorm labels: small dot on the building, hairline leader, mono text */
+.map-label {
+  position: absolute; left: 0; top: 0; width: 0; height: 0;
+  pointer-events: none; will-change: transform;
+}
+.map-label::before {                /* dot on the building */
+  content: ""; position: absolute; left: -2.5px; top: -2.5px;
+  width: 5px; height: 5px; border-radius: 50%; background: #3a3a3a;
+}
+.map-label::after {                 /* short leader */
+  content: ""; position: absolute; left: -.5px; top: -14px;
+  width: 1px; height: 12px; background: #3a3a3a;
+}
+.map-label-text {
+  position: absolute; left: 0; bottom: 14px; transform: translateX(-50%);
+  white-space: nowrap;
+  font-family: var(--mono); font-size: 10px; line-height: 1; letter-spacing: .03em;
+  color: #2e2e2e; background: rgba(210, 210, 210, .9);
+  padding: 2px 4px;
+}
+.map-label.is-below::after { top: 2px; }
+.map-label.is-below .map-label-text { bottom: auto; top: 14px; }
+.map-cap {
+  position: absolute; right: 6px; bottom: 4px; pointer-events: none;
+  font-family: var(--mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted); opacity: .8;
+}
+
+.noscript { padding: 120px 24px; text-align: center; color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  .bar-layer, .dot { transition: none; }
+}
