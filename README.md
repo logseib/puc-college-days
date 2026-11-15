@@ -16,6 +16,8 @@
 
 **v11 (Nov 15, 2026):** the v10 rail ticks are gone (DOM, CSS, JS); the parallax dot is back to exactly v9's behavior. All icons are now a red label on pure white, in the RIGHT NOW / og-tag style (site red, square corners, white bold mono uppercase, .08em tracking) reading "PUC / ATTENDANCE- / MAXING"; the maskable one keeps the label inside the 80% safe zone; the favicons (32 + .ico 16/32/48) are a simplified "PUC" label. Same files as v10. Cache-bust `?v=12` (CSS, JS, icons, manifest). Backup: `old/v10/`.
 
+**v12 (Nov 15, 2026):** the bobbing down arrow under each photo is gone (DOM, CSS, JS); the scroll pulse, SWIPE UP hint and parallax dot are unchanged. New icon in the style of Logan's Card Tracker / Who's On Duty icon SVGs: light vertical-gradient background, the red label tilted 7°, a darker red copy offset below it for a 3D edge, soft drop shadow, diagonal fill gradient, top highlight, inner white hairline and lightly embossed text; "PUC" is much larger above "ATTENDANCE- / MAXING". Sources: `assets/icons/icon.svg`, `icon-maskable.svg` (scaled into the 80% safe zone), `favicon.svg` ("PUC" only). Text is IBM Plex Mono Bold (the PNGs are pre-rendered, so the device font doesn't matter). Cache-bust `?v=13`. Backup: `old/v11/`.
+
 The notes below describe v1 and are kept for reference.
 
 
