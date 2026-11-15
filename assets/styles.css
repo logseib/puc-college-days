@@ -67,37 +67,22 @@ body {
 }
 .clock em { font-style: normal; opacity: .7; }
 
-/* ---------- Left progress rail ---------- */
+/* ---------- Left rail: fixed hairline that fades out top + bottom ---------- */
+:root { --rail-x: 14px; --dot: 10px; }
 .rail {
-  position: fixed; z-index: 11;
-  left: 0; width: var(--gutter);
-  top: calc(var(--safe-top) + var(--bar-h) + 18px);
-  bottom: calc(var(--map-h) + 12px);   /* stays beside the content, above the map */
-  display: flex; flex-direction: column; justify-content: center; align-items: center;
-  gap: 0;
+  position: fixed; z-index: 0; pointer-events: none;
+  left: calc(var(--rail-x) - .5px); width: 1px;
+  top: calc(var(--safe-top) + var(--bar-h) + 4px);
+  bottom: calc(var(--map-h) + 6px);           /* stops above the full-width map */
+  background: #7d7d7d;
+  -webkit-mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent);
+          mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent);
 }
-.rail::before {                       /* hairline */
-  content: ""; position: absolute; top: 50%; left: 50%;
-  width: 1px; height: var(--rail-len, 60px); transform: translate(-50%, -50%);
-  background: var(--faint);
-}
-.rail button {
-  position: relative; appearance: none; border: 0; background: none; padding: 0;
-  width: 28px; height: 30px; cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-.rail button::before {                /* the tick */
-  content: ""; position: absolute; left: 50%; top: 50%;
-  width: 7px; height: 1px; transform: translate(-50%, -50%);
-  background: var(--faint);
-  transition: width .25s ease, height .25s ease, background-color .25s ease;
-}
-.rail button.is-live::before { background: var(--muted); width: 9px; }
-.rail button.is-here::before { width: 3px; height: 14px; background: var(--ink); }
 
 /* ---------- Timeline scroller (snap) ---------- */
 .timeline {
-  position: fixed; inset: 0;
+  position: fixed; top: 0; left: 0; right: 0;
+  bottom: var(--map-h);             /* the scroller ends above the fixed map */
   overflow-y: auto;
   scroll-snap-type: y mandatory;
   -webkit-overflow-scrolling: touch;
@@ -107,11 +92,11 @@ body {
 .timeline::-webkit-scrollbar { display: none; }
 
 .card {
-  height: 100vh; height: 100dvh;
+  height: 100%;                     /* one card = the space above the map */
   scroll-snap-align: start;
   scroll-snap-stop: always;
   display: flex; flex-direction: column;
-  padding: calc(var(--safe-top) + var(--bar-h) + 22px) var(--pad-r) 0 var(--gutter);
+  padding: calc(var(--safe-top) + var(--bar-h) + 22px) var(--pad-r) 14px var(--gutter);
   gap: 12px;
 }
 @supports (height: 1dvh) { :root { --map-h: 33.333dvh; } }
@@ -135,11 +120,26 @@ body {
 .card.is-current .current-tab { display: block; }
 
 .title {
+  position: relative;
   margin: 0;
   font-size: 26px; font-weight: 600; line-height: 1.12; letter-spacing: -.015em;
   flex: 0 0 auto;
   text-wrap: balance;
 }
+/* bullet dot: lives in the card, in the left margin on the rail, centered on the title's first line */
+.dot {
+  position: absolute;
+  /* title's left edge sits at gutter + 2px (block margin -10 + border 2 + padding 10) */
+  left: calc(var(--rail-x) - var(--gutter) - 2px - var(--dot) / 2);
+  top: calc(.56em - var(--dot) / 2);          /* line-height 1.12 → first-line center = .56em */
+  width: var(--dot); height: var(--dot); border-radius: 50%;
+  background: var(--ink);
+  opacity: 0; transform: translateY(7px);
+  transition: opacity .38s ease, transform .45s cubic-bezier(.2, .8, .2, 1), background-color .25s ease;
+}
+.card.is-arrived .dot { opacity: 1; transform: none; }
+.card.is-current .dot { background: var(--red); }
+
 .where {
   flex: 0 0 auto;
   font-family: var(--mono); font-size: 13px; line-height: 1.4; letter-spacing: .01em;
@@ -157,17 +157,16 @@ body {
   filter: saturate(.9);
 }
 
-/* ---------- Illustrated campus map (pinch / drag zoom) ---------- */
+/* ---------- Illustrated campus map: ONE fixed map, bottom third, edge to edge ---------- */
 .map {
-  position: relative; flex: 0 0 var(--map-h);
-  margin: auto calc(-1 * var(--gutter)) 0;   /* pinned to the bottom, edge to edge */
+  position: fixed; z-index: 5; left: 0; right: 0; bottom: 0;
+  height: var(--map-h);
   overflow: hidden; border-radius: 0;   /* square corners */
   background: var(--bg);
-  touch-action: pan-y;              /* one finger scrolls the page until you pinch */
+  touch-action: none;               /* outside the scroller: one finger pans, two pinch */
   -webkit-user-select: none; user-select: none;
   cursor: grab;
 }
-.map.is-engaged { touch-action: none; }
 .map-stage {
   position: absolute; left: 0; top: 0;
   transform-origin: 0 0; will-change: transform;
@@ -181,19 +180,21 @@ body {
 .map-blur {
   position: absolute; inset: 0; pointer-events: none;
   -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
-  -webkit-mask-image: radial-gradient(ellipse 72% 70% at 50% 50%, transparent 55%, #000 100%);
-          mask-image: radial-gradient(ellipse 72% 70% at 50% 50%, transparent 55%, #000 100%);
+  -webkit-mask-image: radial-gradient(ellipse 72% 70% at 50% 50%, transparent 39%, #000 100%);   /* v4: rim ~35% wider */
+          mask-image: radial-gradient(ellipse 72% 70% at 50% 50%, transparent 39%, #000 100%);
 }
 .map-fade {                         /* edges dissolve into the paper */
   position: absolute; inset: 0; pointer-events: none;
-  box-shadow: inset 0 0 18px 10px var(--bg);
+  box-shadow: inset 0 0 24px 14px var(--bg);   /* v4: ~35% wider than 18px/10px */
 }
 .map-pin {
   position: absolute; pointer-events: none;
   border: 2px solid var(--red); border-radius: 50%;   /* the circle itself stays round */
   background: rgba(225, 37, 27, .10);
   transform: translate(-50%, -50%);
+  opacity: 0; transition: opacity .35s ease;   /* circles cross-fade between events */
 }
+.map-pin.is-on { opacity: 1; }
 /* permanent dorm labels: small dot on the building, hairline leader, mono text */
 .map-label {
   position: absolute; left: 0; top: 0; width: 0; height: 0;
@@ -225,5 +226,5 @@ body {
 .noscript { padding: 120px 24px; text-align: center; color: var(--muted); }
 
 @media (prefers-reduced-motion: reduce) {
-  .bar-layer, .rail button::before { transition: none; }
+  .bar-layer, .dot { transition: none; }
 }
