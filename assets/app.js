@@ -23,12 +23,14 @@
  *             live event; the rail dot is red. Those are not moved to
  *             the upcoming card. The next upcoming event always has a
  *             blue "UP NEXT (...)" badge (same shape as RIGHT NOW) with
- *             a live countdown: H:MM when an hour or more away, M:SS
- *             under one hour. At 0 the badge is removed, RIGHT NOW
- *             takes over on that card, and UP NEXT moves to the
- *             following event, no reload needed. After the last event
- *             starts there is no UP NEXT. The map frames the card
- *             that is shown.
+ *             a live countdown: "1h 5m" / "2h 0m" when an hour or more
+ *             away, "0h 11m" from 10 minutes up to an hour (floor of
+ *             remaining minutes), and live M:SS ("9:59"…"0:01") under
+ *             10 minutes. The M:SS badge pulses calmly until it hits 0.
+ *             At 0 the badge is removed, RIGHT NOW takes over on that
+ *             card, and UP NEXT moves to the following event, no reload
+ *             needed. After the last event starts there is no UP NEXT.
+ *             The map frames the card that is shown.
  *  Rail:   a fixed fading hairline in the left margin. Dots are fixed
  *             on that rail and driven by scroll position (no time-based
  *             animation). Each bullet travels only ~70px along the line
@@ -214,15 +216,16 @@
     const day = fmtDay(it.start);
     if (day !== shownDay) { barDate.textContent = day; shownDay = day; }
   }
-  /* >= 1 hour: H:MM (hours:minutes, minutes padded). Under 1 hour: M:SS
-   * (live seconds, minutes unpadded). No spaces around the colon. */
+  /* >= 10 minutes: "Hh Mm" with floor of remaining minutes, minutes not
+   * padded ("2h 0m", "1h 5m", "0h 10m"). Under 10 minutes: live M:SS
+   * ("9:59"…"0:01"). At exactly 600s show "0h 10m"; at 599s, "9:59". */
   function fmtCountdown(ms) {
     const remain = Math.max(0, ms);
-    if (remain >= 60 * MIN) {
+    if (remain >= 10 * MIN) {
       const totalMin = Math.floor(remain / MIN);
-      return Math.floor(totalMin / 60) + ":" + String(totalMin % 60).padStart(2, "0");
+      return Math.floor(totalMin / 60) + "h " + (totalMin % 60) + "m";
     }
-    const sec = Math.min(59 * 60 + 59, Math.ceil(remain / 1000));
+    const sec = Math.min(9 * 60 + 59, Math.ceil(remain / 1000));
     return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0");
   }
   /** Index of the next upcoming event (start > t); -1 after the last event starts. */
@@ -242,7 +245,9 @@
       c.classList.toggle("is-up-next", isUpNext);
       const nextTag = c.querySelector(".next-tag");
       if (nextTag) {
-        if (isUpNext) nextTag.textContent = "UP NEXT (" + fmtCountdown(items[i].start - t) + ")";
+        const remain = items[i].start - t;
+        if (isUpNext) nextTag.textContent = "UP NEXT (" + fmtCountdown(remain) + ")";
+        nextTag.classList.toggle("is-ticking", isUpNext && remain < 10 * MIN);
         nextTag.setAttribute("aria-hidden", isUpNext ? "false" : "true");
       }
     });

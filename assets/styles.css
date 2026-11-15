@@ -1,5 +1,5 @@
 /* =====================================================================
- * PUC College Days — styles (v18 : UP NEXT always on the next event; H:MM / M:SS countdown)
+ * PUC College Days — styles (v19 : UP NEXT Hh Mm / 0h Mm / M:SS pulse; title baseline fix)
  * Light gray paper, dark ink. Sticky header is only the date + clock.
  * Event time + title share one line next to the rail bullet. Photos
  * are 3:2. One fixed map in the bottom half of the screen, with the
@@ -125,9 +125,10 @@ body {
 
 /* One line: "10:00AM : Worship" — time in the title weight, name lighter.
  * The compact "RIGHT NOW" / "UP NEXT (...)" badge is floated to the
- * end of the first line (same shape; red / blue). A long name wraps
- * under the badge at full width so the badge never crowds the title,
- * including on 320px screens. */
+ * end of the first line (same shape; red / blue). The time (.lead) stays
+ * in normal flow with the name so they share a baseline at every width
+ * (v19: a left-floated lead was pushing the first line of the name down
+ * on 320px). A long name wraps under the badge at full width. */
 .title {
   margin: 0;
   display: block;
@@ -136,7 +137,7 @@ body {
   flex: 0 0 auto;
 }
 .title::after { content: ""; display: table; clear: both; }
-.title .lead { float: left; white-space: nowrap; }
+.title .lead { white-space: nowrap; }
 .title .when, .title .sep { font-weight: 600; }
 .title .name { font-weight: 300; }
 .now-tag,
@@ -159,6 +160,26 @@ body {
 .next-tag { background: var(--blue); }
 .card.is-current .now-tag { display: inline-block; }
 .card.is-up-next .next-tag { display: inline-block; }
+
+/* v19: calm pulse while UP NEXT is in live M:SS mode (under 10 minutes).
+ * Transform + box-shadow only, so layout does not shift. */
+.next-tag.is-ticking {
+  transform-origin: center center;
+  animation: up-next-pulse 1.6s ease-in-out infinite;
+}
+@keyframes up-next-pulse {
+  0%, 100% { transform: scale(1);    box-shadow: 0 0 0 0   rgba(27, 94, 225, 0); }
+  50%      { transform: scale(1.06); box-shadow: 0 0 0 5px rgba(27, 94, 225, 0.28), 0 0 10px 2px rgba(27, 94, 225, 0.18); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .next-tag.is-ticking {
+    animation-name: up-next-pulse-rm;
+  }
+  @keyframes up-next-pulse-rm {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.72; }
+  }
+}
 
 .where {
   flex: 0 0 auto;
