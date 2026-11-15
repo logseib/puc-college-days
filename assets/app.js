@@ -38,12 +38,14 @@
  *             touch resets the timer. Hidden on the last event. If the
  *             5s photo slide would fire at the same moment, the hint
  *             waits for that 600ms ease to finish.
- *  6. Full:   (v14) a small expand icon in the map's top-right corner
- *             turns the map into a full-viewport CSS overlay (100dvh,
- *             safe-area aware). Pinch/pan/double-tap and the red circles
- *             keep working. The icon becomes "collapse"; Esc also exits.
- *             While open : no hints, no nudges, no timeline swipes. On exit
- *             the map returns to exactly the view it had before opening.
+ *  6. Full:   (v14/v16) a small expand icon in the map's bottom-right
+ *             corner turns the map into a full-viewport CSS overlay
+ *             (100dvh, safe-area aware). The icon stays in the same
+ *             screen position when the map expands. Pinch/pan/double-tap
+ *             and the red circles keep working. The icon becomes
+ *             "collapse"; Esc also exits. While open : no hints, no
+ *             nudges, no timeline swipes. On exit the map returns to
+ *             exactly the view it had before opening.
  * ===================================================================== */
 (function () {
   "use strict";

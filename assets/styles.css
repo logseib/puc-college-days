@@ -1,5 +1,5 @@
 /* =====================================================================
- * PUC College Days — styles (v14 : full-screen map toggle; plus button moved to the header)
+ * PUC College Days — styles (v16 : full-screen toggle at map bottom-right; plus in the header)
  * Light gray paper, dark ink. Sticky header is only the date + clock.
  * Event time + title share one line next to the rail bullet. Photos
  * are 3:2. One fixed map in the bottom half of the screen, with the
@@ -278,7 +278,13 @@ body {
   stroke: var(--red); stroke-width: 2px; stroke-linejoin: miter;
 }
 .map-cap {
-  position: absolute; right: 8px; bottom: 8px; pointer-events: none;
+  /* v16: bottom-left, so it stays clear of the expand button at bottom-right.
+     Same safe-area insets in both normal and full-screen, so it does not jump. */
+  position: absolute;
+  left: calc(env(safe-area-inset-left, 0px) + 10px);
+  right: auto;
+  bottom: calc(var(--safe-bottom) + 10px);
+  pointer-events: none;
   font-family: var(--mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
   color: var(--muted); opacity: .8;
 }
@@ -381,15 +387,20 @@ body {
 #help svg { display: block; width: 19px; height: 19px; }
 #help svg * { stroke: currentColor; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 
-/* ---------- v14: full-screen map ----------
+/* ---------- v14/v16: full-screen map ----------
  * A CSS overlay (not the Fullscreen API, which iOS Safari only allows for
- * video). The toggle sits in the map's top-right corner : the corner the
- * plus button used to hold, clear of PINCH TO ZOOM (bottom-right), the
- * SWIPE UP hint (centered above the map) and the rail dots (left). */
+ * video). v16: the toggle sits in the map's bottom-right corner, the
+ * same screen position in both normal and full-screen (the map is fixed
+ * to the bottom of the viewport). Safe-area insets are applied in both
+ * states so the button does not jump. PINCH TO ZOOM is at bottom-left;
+ * the SWIPE UP hint stays centered above the map; rail dots stay left.
+ * The A2HS popup (z 30) covers the button while open, then hides in
+ * full-screen. Tap target is 40px. */
 .map-full-btn {
   position: fixed; z-index: 7;
-  right: 10px; bottom: calc(var(--map-h) - 44px);
-  width: 34px; height: 34px; margin: 0; padding: 0;
+  right: calc(env(safe-area-inset-right, 0px) + 10px);
+  bottom: calc(var(--safe-bottom) + 10px);
+  width: 40px; height: 40px; margin: 0; padding: 0;
   background: rgba(210, 210, 210, .82);
   color: var(--ink); border: 0; border-radius: 0; box-shadow: none;
   display: flex; align-items: center; justify-content: center;
@@ -406,14 +417,11 @@ html.is-map-full .map {
 }
 html.is-map-full .map-full-btn {
   z-index: 41;
-  bottom: auto;
-  top: calc(var(--safe-top) + 10px);
-  right: calc(env(safe-area-inset-right, 0px) + 10px);
+  /* bottom-right insets are unchanged, so the button does not move */
 }
 html.is-map-full .map-full-btn::after {   /* one red hairline under the collapse icon : "you are in full screen" */
   content: ""; position: absolute; left: 8px; right: 8px; bottom: 4px; height: 1px; background: var(--red);
 }
-html.is-map-full .map-cap { bottom: calc(var(--safe-bottom) + 10px); right: calc(env(safe-area-inset-right, 0px) + 10px); }
 html.is-map-full .timeline { overflow: hidden; }                 /* no timeline swipes underneath */
 html.is-map-full .scroll-hint,
 html.is-map-full #a2hs,
