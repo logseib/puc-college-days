@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Attendancemaxing</title>
+  <meta name="description" content="PUC College Days · Sunday, November 15. Live schedule for Thunderbird Adventist Academy students.">
+  <meta name="theme-color" content="#d2d2d2">
+
+  <!-- Link preview (iMessage, WhatsApp, etc.) -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Attendancemaxing">
+  <meta property="og:title" content="Attendancemaxing">
+  <meta property="og:description" content="PUC College Days · Sunday, November 15">
+  <meta property="og:url" content="https://logseib.github.io/puc-college-days/">
+  <meta property="og:image" content="https://logseib.github.io/puc-college-days/assets/img/og-attendancemaxing.jpg">
+  <meta property="og:image:secure_url" content="https://logseib.github.io/puc-college-days/assets/img/og-attendancemaxing.jpg">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="PUC campus map with the church circled in red and a red ATTENDANCEMAXING label">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Attendancemaxing">
+  <meta name="twitter:description" content="PUC College Days · Sunday, November 15">
+  <meta name="twitter:image" content="https://logseib.github.io/puc-college-days/assets/img/og-attendancemaxing.jpg">
+  <link rel="canonical" href="https://logseib.github.io/puc-college-days/">
+
+  <!-- "Add to Home Screen" support -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Attendancemaxing">
+  <meta name="application-name" content="Attendancemaxing">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png?v=11">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png?v=11">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png?v=11">
+  <link rel="shortcut icon" href="assets/icons/favicon.ico?v=11">
+  <link rel="manifest" href="manifest.json?v=11">
+  <link rel="preload" as="image" href="assets/img/puc-campus-map-v5.webp">
+  <link rel="stylesheet" href="assets/styles.css?v=11">
+</head>
+<body>
+  <!-- Sticky header: only the date and the live clock -->
+  <header class="bar">
+    <div class="bar-date" id="bar-date">Sunday, November 15</div>
+    <div class="clock" id="clock" aria-label="Current time, Pacific">--:--</div>
+  </header>
+
+  <!-- Left rail: a fixed hairline; dots live in .dots so the rail's fade mask doesn't hide them -->
+  <div class="rail" aria-hidden="true"></div>
+  <div class="ticks" id="ticks" aria-hidden="true"></div>
+  <div class="dots" id="dots" aria-hidden="true"></div>
+
+  <!-- The timeline: one snap-scrolling card per event (built by app.js).
+       The scroller ends above the map, so cards never tuck underneath it. -->
+  <main id="timeline" class="timeline" aria-label="Sunday schedule"></main>
+
+  <!-- Idle scroll hint: same type as "pinch to zoom"; pulses after 10s still. Hidden on the last event. -->
+  <div class="scroll-hint" id="scroll-hint" aria-hidden="true"><span class="scroll-hint-arrow" aria-hidden="true"></span>swipe up</div>
+
+  <!-- One fixed map for the whole page: almost the bottom half of the screen.
+       Edge treatment is the v5 feathered rim, with a slightly taller fade at the top. -->
+  <div id="map" class="map" aria-label="Campus map">
+    <div class="map-stage"><img alt="" draggable="false" src="assets/img/puc-campus-map-v5.webp"></div>
+    <div class="map-blur"></div>
+    <div class="map-blur-top"></div>
+    <div class="map-fade"></div>
+    <div class="map-flash" aria-hidden="true"></div>
+    <div class="map-cap">pinch to zoom</div>
+  </div>
+
+  <!-- v10: Add to Home Screen tip + plus button (ported from Who's On Duty / Card Tracker) -->
+  <div id="a2hs" role="dialog" aria-label="Add to Home Screen">
+    <button class="x" id="a2hsX" aria-label="Close">×</button>
+    <div class="a2hsHead"><img class="appicon" src="assets/icons/apple-touch-icon.png?v=11" alt="Attendancemaxing icon" width="60" height="60"><b>Keep this one tap away</b></div>
+    <p id="a2hsText">Add it to your home screen in three&nbsp;taps&nbsp;:</p>
+    <ol id="a2hsSteps"><li><span class="ic"><svg width="20" height="20" viewBox="0 0 20 20"><path d="M3 5h14M3 10h14M3 15h14" stroke="#555555" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Tap the <b>menu</b> button in Safari's toolbar</span></li><li><span class="ic"><svg width="20" height="20" viewBox="0 0 15 18"><path d="M7.5 1v10M4 4.5L7.5 1 11 4.5" stroke="#555555" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 7.5H2.5v9h10v-9H10" stroke="#555555" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Tap <b>Share</b></span></li><li><span class="ic"><svg width="20" height="20" viewBox="0 0 20 20"><rect x="2.5" y="2.5" width="15" height="15" rx="3.5" stroke="#555555" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 6.5v7M6.5 10h7" stroke="#555555" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Tap <b>Add to Home Screen</b></span></li></ol>
+  </div>
+  <button id="help" aria-label="Add to Home Screen"></button>
+
+  <noscript><p class="noscript">This schedule needs JavaScript turned on.</p></noscript>
+
+  <script src="assets/events.js?v=11"></script>
+  <script src="assets/app.js?v=11"></script>
+  <script src="assets/a2hs.js?v=11"></script>
+</body>
+</html>
