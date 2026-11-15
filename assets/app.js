@@ -186,6 +186,16 @@
       el.insertBefore(d, el.querySelector(".map-cap"));
       return { p, d };
     });
+    // Dorm reference labels: positioned in screen px on every apply(), so they stay
+    // glued to their building while the text keeps a constant size at any zoom.
+    const blur = el.querySelector(".map-blur");
+    const labels = (MAP.labels || []).map(l => {
+      const d = document.createElement("div");
+      d.className = "map-label" + (l.side === "below" ? " is-below" : "");
+      d.innerHTML = '<span class="map-label-text">' + esc(l.text) + "</span>";
+      el.insertBefore(d, blur);
+      return { l, d };
+    });
     const v = { s: 1, x: 0, y: 0 };
     let home = null;
     stage.style.width = MAP.w + "px";
@@ -203,6 +213,9 @@
     function apply() {
       clamp();
       stage.style.transform = "translate(" + v.x + "px," + v.y + "px) scale(" + v.s + ")";
+      labels.forEach(({ l, d }) => {
+        d.style.transform = "translate(" + (v.x + l.x * v.s).toFixed(1) + "px," + (v.y + l.y * v.s).toFixed(1) + "px)";
+      });
       pins.forEach(({ p, d }) => {
         const r = Math.max(9, p.mapR * v.s);
         d.style.left = (v.x + p.mapX * v.s) + "px";

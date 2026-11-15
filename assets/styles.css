@@ -177,6 +177,28 @@ body {
   background: rgba(225, 37, 27, .10);
   transform: translate(-50%, -50%);
 }
+/* permanent dorm labels: small dot on the building, hairline leader, mono text */
+.map-label {
+  position: absolute; left: 0; top: 0; width: 0; height: 0;
+  pointer-events: none; will-change: transform;
+}
+.map-label::before {                /* dot on the building */
+  content: ""; position: absolute; left: -2.5px; top: -2.5px;
+  width: 5px; height: 5px; border-radius: 50%; background: #3a3a3a;
+}
+.map-label::after {                 /* short leader */
+  content: ""; position: absolute; left: -.5px; top: -14px;
+  width: 1px; height: 12px; background: #3a3a3a;
+}
+.map-label-text {
+  position: absolute; left: 0; bottom: 14px; transform: translateX(-50%);
+  white-space: nowrap;
+  font-family: var(--mono); font-size: 10px; line-height: 1; letter-spacing: .03em;
+  color: #2e2e2e; background: rgba(233, 233, 233, .88);
+  padding: 2px 4px;
+}
+.map-label.is-below::after { top: 2px; }
+.map-label.is-below .map-label-text { bottom: auto; top: 14px; }
 .map-cap {
   position: absolute; right: 6px; bottom: 4px; pointer-events: none;
   font-family: var(--mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
