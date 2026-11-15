@@ -387,6 +387,23 @@
       pinFor[p.name] = { p, d };
     }));
     const pins = Object.values(pinFor);
+    // v9: straight-edged red outline for places with an area (Free Time = main campus)
+    const SVGNS = "http://www.w3.org/2000/svg";
+    const areaFor = {};
+    items.forEach(it => it.places.forEach(p => {
+      if (!Array.isArray(p.area) || areaFor[p.name]) return;
+      const svg = document.createElementNS(SVGNS, "svg");
+      svg.setAttribute("class", "map-area");
+      svg.setAttribute("viewBox", "0 0 " + MAP.w + " " + MAP.h);
+      svg.setAttribute("width", MAP.w); svg.setAttribute("height", MAP.h);
+      const poly = document.createElementNS(SVGNS, "polygon");
+      poly.setAttribute("points", p.area.map(q => q.join(",")).join(" "));
+      poly.setAttribute("vector-effect", "non-scaling-stroke");
+      svg.appendChild(poly);
+      el.insertBefore(svg, cap);
+      areaFor[p.name] = { p, d: svg };
+    }));
+    const areas = Object.values(areaFor);
     const v = { s: 1, x: 0, y: 0 };
     const MAX = 1.2;
     let active = -1;
@@ -407,6 +424,7 @@
         d.style.top = (v.y + p.mapY * v.s) + "px";
         d.style.width = d.style.height = (2 * r) + "px";
       });
+      areas.forEach(({ d }) => { d.style.transform = "translate(" + v.x + "px," + v.y + "px) scale(" + v.s + ")"; });
     }
     /** View that frames event i's circle(s). */
     function homeFor(i) {
@@ -415,7 +433,14 @@
       const ps = (items[i] ? items[i].places : []).filter(p => typeof p.mapX === "number");
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
       ps.forEach(p => { x0 = Math.min(x0, p.mapX - p.mapR); y0 = Math.min(y0, p.mapY - p.mapR); x1 = Math.max(x1, p.mapX + p.mapR); y1 = Math.max(y1, p.mapY + p.mapR); });
-      if (!ps.length) { x0 = 0; y0 = 0; x1 = MAP.w; y1 = MAP.h; }
+      const as = (items[i] ? items[i].places : []).filter(p => Array.isArray(p.area));
+      as.forEach(p => p.area.forEach(([ax, ay]) => { x0 = Math.min(x0, ax); y0 = Math.min(y0, ay); x1 = Math.max(x1, ax); y1 = Math.max(y1, ay); }));
+      if (!ps.length && !as.length) { x0 = 0; y0 = 0; x1 = MAP.w; y1 = MAP.h; }
+      if (!ps.length && as.length) {   // frame the outline itself, with a little margin
+        const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+        const s = Math.max(minScale(), Math.min(MAX, Math.min(b.w / ((x1 - x0) * 1.12), b.h / ((y1 - y0) * 1.25))));
+        return { s, x: b.w / 2 - cx * s, y: b.h / 2 - cy * s };
+      }
       const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
       const span = Math.max(x1 - x0, y1 - y0) * 4.2;
       const s = Math.max(minScale(), Math.min(MAX, Math.min(b.w, b.h) / span));
@@ -476,6 +501,7 @@
       if (!items[i]) return;
       const names = items[i].places.map(p => p.name);
       pins.forEach(({ p, d }) => d.classList.toggle("is-on", names.indexOf(p.name) >= 0));
+      areas.forEach(({ p, d }) => d.classList.toggle("is-on", names.indexOf(p.name) >= 0));
       el.setAttribute("aria-label", "Campus map : " + (items[i].where || names.join(", ")));
       active = i;
       const home = homeFor(i); if (!home) return;

@@ -266,6 +266,17 @@ body {
   opacity: 0; transition: opacity .35s ease;   /* circles cross-fade between events */
 }
 .map-pin.is-on { opacity: 1; }
+/* v9: straight-segment area outline (Free Time), same red as the circles */
+.map-area {
+  position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible;
+  transform-origin: 0 0;
+  opacity: 0; transition: opacity .35s ease;
+}
+.map-area.is-on { opacity: 1; }
+.map-area polygon {
+  fill: rgba(225, 37, 27, .10);
+  stroke: var(--red); stroke-width: 2px; stroke-linejoin: miter;
+}
 .map-cap {
   position: absolute; right: 8px; bottom: 8px; pointer-events: none;
   font-family: var(--mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase;

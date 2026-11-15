@@ -62,7 +62,9 @@ window.PUC_PLACES = {
   airport:    { name: "PUC Airport (Virgil O. Parrett Field)", lat: 38.572059, lng: -122.434216, img: "angwin-scenery.jpg", radius: 90 },
   elmshaven:  { name: "Elmshaven",                  sub: "Ellen G. White's home · 125 Glass Mountain Ln, St. Helena", lat: 38.537060, lng: -122.478762, img: "elmshaven.jpg" },
   sthelena:   { name: "Downtown St. Helena",        sub: "Main Street, St. Helena, CA", lat: 38.504575, lng: -122.469352, img: "sthelena.jpg", radius: 220 },
-  free:       { name: "Your choice (on campus)", lat: 38.569889, lng: -122.440449, img: null, radius: 160 }  // img: null → no photo; no mapX → full-campus map, no circle
+  free:       { name: "Your choice (on campus)", lat: 38.569889, lng: -122.440449, img: null, radius: 160,
+                // v9: straight-segment outline of the main campus (map px), drawn in the circle red
+                area: [[537,1397],[630,1014],[860,768],[1213,682],[2150,614],[2565,722],[2472,860],[2227,1014],[2227,1367],[1351,1459],[799,1459]] }  // img: null → no photo
 };
 
 window.PUC_EVENTS = [
