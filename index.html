@@ -1,1 +1,62 @@
 <!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <!-- viewport-fit=cover lets the page run under the iPhone notch; we pad with safe-area insets in CSS -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>PUC College Days · TAA</title>
+  <meta name="description" content="Live schedule for Thunderbird Adventist Academy students at PUC College Days, Nov 14–16, 2026.">
+  <meta name="theme-color" content="#0b0f1a">
+
+  <!-- "Add to Home Screen" support -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="College Days">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="assets/icons/icon-192.png">
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Leaflet (maps) from CDN; OpenStreetMap tiles are loaded in app.js -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <!-- Fixed header: brand + live Pacific clock -->
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">TAA</span><span class="brand-text">PUC College Days</span></div>
+    <div class="clock-pill" aria-live="off">
+      <span class="live-dot" aria-hidden="true"></span>
+      <span id="clock">--:--</span>
+      <span class="clock-zone">PT</span>
+    </div>
+  </header>
+
+  <!-- Blurred / faded edges that hint at the previous and next cards -->
+  <div class="edge edge-top" aria-hidden="true"></div>
+  <div class="edge edge-bottom" aria-hidden="true"></div>
+
+  <!-- Demo banner (only shown when ?now= is used) -->
+  <div id="demo-banner" class="demo-banner" hidden></div>
+
+  <!-- "Up next" hint shown inside the bottom blur -->
+  <div id="peek" class="peek" aria-hidden="true"></div>
+
+  <!-- Side progress rail -->
+  <nav id="rail" class="rail" aria-hidden="true"></nav>
+
+  <!-- The timeline: one full-screen, snap-scrolling card per event (built by app.js) -->
+  <main id="timeline" class="timeline" aria-label="Trip schedule"></main>
+
+  <!-- "Jump to now" button appears when you scroll away from the live event -->
+  <button id="now-btn" class="now-btn" type="button" hidden>Jump to now</button>
+
+  <noscript><p class="noscript">This schedule needs JavaScript turned on.</p></noscript>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="assets/events.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>
