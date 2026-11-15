@@ -1,22 +1,26 @@
 /* =====================================================================
- * PUC College Days — app logic (v2, no build step, no framework)
+ * PUC College Days — app logic (v6, no build step, no framework)
  *
  *  1. Time:   PACIFIC wall-clock time. "Wall ms" = Date.UTC(...) of the
  *             Pacific clock reading, so plain number comparisons work.
  *             Demo override: ?now=2026-11-15T10:15 (keeps ticking).
- *  2. Render: one full-screen snap card per event (title, place, photo,
- *             illustrated campus map). Date + time live in a fixed header
- *             that cross-fades when you land on another event.
+ *  2. Render: one snap card per event (start time + title on one line,
+ *             place, 3:2 photo). The fixed header is only the date
+ *             ("Sunday, November 15") and the live clock (HH:MMAM).
  *  3. Now:    on load, jumps to the live event (before the first: first;
- *             after the last: last). Current-event outline + dot refresh each minute.
- *  Rail:   a fixed hairline in the left margin; each card carries its own
- *             bullet dot beside the title (red when live) that rides with the card
- *             and fades in as the card lands.
- *  4. Map:    ONE fixed map in the bottom third (PUC's illustrated PDF map,
+ *             after the last: last). Current-event outline + red dot
+ *             refresh each minute.
+ *  Rail:   a fixed fading hairline in the left margin. Dots are fixed
+ *             on that rail: the incoming dot fades in from 70px below
+ *             its landing (level with the new title) as a swipe starts,
+ *             and glides up to land with the title. The outgoing dot
+ *             rides its title up and out. Red when the event is live.
+ *  4. Map:    ONE fixed map in the bottom half (PUC's illustrated PDF map,
  *             with Grainger/Graf tags baked into the image so they scale with pinch).
  *             When the active event changes it glides (~500 ms) to that event's
  *             place and cross-fades to its red circle(s). Pinch to zoom, one
- *             finger pans, double-tap resets; a small zoom "bump" after each settle.
+ *             finger pans, double-tap resets; a small zoom "bump" after each
+ *             settle, plus a brief, very subtle flash so the map feels updated.
  * ===================================================================== */
 (function () {
   "use strict";
@@ -27,6 +31,9 @@
   const MAP = window.PUC_MAP || { src: "", w: 1, h: 1 };
   const IMG_DIR = "assets/img/";
   const MIN = 60 * 1000;
+  const DOT = 10;            // matches --dot in CSS
+  const DOT_IN_FROM = 70;    // incoming dot starts this many px below its landing
+  const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   /* ---------------- 1. Time ---------------- */
   const partsFmt = new Intl.DateTimeFormat("en-US", {
@@ -50,15 +57,12 @@
   const offset = demo ? override - realPacificWall() : 0;
   const now = () => realPacificWall() + offset;
 
-  const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
   const hm = w => { const d = new Date(w); return (d.getUTCHours() % 12 || 12) + ":" + String(d.getUTCMinutes()).padStart(2, "0"); };
   const ap = w => (new Date(w).getUTCHours() >= 12 ? "PM" : "AM");
-  const fmtDay = w => { const d = new Date(w); return DAYS[d.getUTCDay()] + " · " + MONTHS[d.getUTCMonth()] + " " + d.getUTCDate(); };
-  function fmtRange(a, b) {
-    const same = ap(a) === ap(b);
-    return hm(a) + (same ? "" : "<small>" + ap(a) + "</small>") + "–" + hm(b) + "<small>" + ap(b) + "</small>";
-  }
+  const fmtDay = w => { const d = new Date(w); return WEEKDAYS[d.getUTCDay()] + ", " + MONTHS[d.getUTCMonth()] + " " + d.getUTCDate(); };
+  const fmtStart = w => hm(w) + ap(w);
 
   /* ---------------- 2. Data ---------------- */
   const items = EVENTS.map((e, i) => {
@@ -66,7 +70,8 @@
     const end = e.end ? parseWall(e.end) : start + 60 * MIN;
     const keys = [].concat(e.place || []);
     const places = keys.map(k => PLACES[k]).filter(Boolean);
-    return Object.assign({}, e, { index: i, start, end, places });
+    const photo = (e.photo && PLACES[e.photo]) || places[0] || {};
+    return Object.assign({}, e, { index: i, start, end, places, photo });
   });
 
   /** Live event with the latest start; else next upcoming; else the last. */
@@ -81,49 +86,71 @@
   /* ---------------- 3. Render ---------------- */
   const timeline = document.getElementById("timeline");
   const clock = document.getElementById("clock");
-  const layers = Array.from(document.querySelectorAll(".bar-layer"));
+  const barDate = document.getElementById("bar-date");
+  const dotsEl = document.getElementById("dots");
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
   items.forEach(it => {
-    const p0 = it.places[0] || {};
+    const p0 = it.photo || {};
     const where = it.where || it.places.map(p => p.name).join(" · ");
-    const sub = !it.where && p0.sub ? p0.sub : "";
+    const sub = !it.where && it.places[0] && it.places[0].sub ? it.places[0].sub : "";
     const card = document.createElement("section");
     card.className = "card";
     card.dataset.index = it.index;
     card.innerHTML =
       '<div class="block">' +
         '<div class="current-tab" aria-hidden="true">Current event</div>' +
-        '<h2 class="title"><span class="dot" aria-hidden="true"></span>' + esc(it.title) + "</h2>" +
+        '<h2 class="title">' +
+          '<span class="lead"><span class="when">' + esc(fmtStart(it.start)) + '</span><span class="sep"> :&nbsp;</span></span>' +
+          '<span class="name">' + esc(it.title) + "</span>" +
+        "</h2>" +
         '<div class="where"><span class="where-k">Location:</span> ' + esc(where) + (sub ? '<span class="note">' + esc(sub) + "</span>" : "") +
           (it.note ? '<span class="note">' + esc(it.note) + "</span>" : "") + "</div>" +
-        (p0.img ? '<img class="photo" alt="' + esc(p0.name || "") + '" src="' + IMG_DIR + esc(p0.img) + '"' + (it.index ? ' loading="lazy"' : "") + ">" : "") +
+        (p0.img ? '<div class="photo-wrap"><img class="photo" alt="' + esc(p0.name || "") + '" src="' + IMG_DIR + esc(p0.img) + '"' + (it.index ? ' loading="lazy"' : "") + "></div>" : "") +
       "</div>";
     timeline.appendChild(card);
   });
   const cards = Array.from(timeline.children);
 
-  /* Bullet dot: shown on the card you're arriving at / sitting on */
-  function landDot(i) { if (cards[i]) cards[i].classList.add("is-arrived"); }
-  function clearOtherDots(i) { cards.forEach((c, k) => { if (k !== i) c.classList.remove("is-arrived"); }); }
+  /* One fixed rail dot per event (not inside the card, so they don't travel the full swipe). */
+  const dots = items.map((_, i) => {
+    const d = document.createElement("div");
+    d.className = "dot";
+    d.dataset.index = i;
+    dotsEl.appendChild(d);
+    return d;
+  });
 
-  /* ---------------- Sticky header (cross-fade) ---------------- */
-  let shown = -1, front = 0;
-  function fillLayer(layer, it, t) {
-    layer.querySelector(".bar-date").textContent = fmtDay(it.start);
-    layer.querySelector(".bar-time").innerHTML = fmtRange(it.start, it.end);
+  /* Landing Y of a snapped card's title (first-line center). Same for every card. */
+  function titleLandingY() {
+    const card = cards[0];
+    if (!card) return 0;
+    const title = card.querySelector(".title");
+    const cs = getComputedStyle(card);
+    const bcs = getComputedStyle(card.querySelector(".block"));
+    const tcs = getComputedStyle(title);
+    const fontSize = parseFloat(tcs.fontSize) || 22;
+    const lineHeight = tcs.lineHeight === "normal" ? fontSize * 1.2 : parseFloat(tcs.lineHeight);
+    return parseFloat(cs.paddingTop) + parseFloat(bcs.borderTopWidth) + parseFloat(bcs.paddingTop) + lineHeight / 2;
   }
-  function showHeader(i, animate) {
+  function titleCenterY(i) {
+    const title = cards[i] && cards[i].querySelector(".title");
+    if (!title) return titleLandingY();
+    const tcs = getComputedStyle(title);
+    const fontSize = parseFloat(tcs.fontSize) || 22;
+    const lineHeight = tcs.lineHeight === "normal" ? fontSize * 1.2 : parseFloat(tcs.lineHeight);
+    return title.getBoundingClientRect().top + lineHeight / 2;
+  }
+  function setDotCenter(el, y, extraY) {
+    el.style.top = (y - DOT / 2 + (extraY || 0)) + "px";
+  }
+
+  /* ---------------- Sticky header (date only) ---------------- */
+  let shownDay = "";
+  function showHeader(i) {
     const it = items[i]; if (!it) return;
-    const t = now();
-    if (i === shown) { fillLayer(layers[front], it, t); return; }
-    shown = i;
-    if (!animate) { fillLayer(layers[front], it, t); return; }
-    const back = 1 - front;
-    fillLayer(layers[back], it, t);
-    layers[back].classList.add("is-on");
-    layers[front].classList.remove("is-on");
-    front = back;
+    const day = fmtDay(it.start);
+    if (day !== shownDay) { barDate.textContent = day; shownDay = day; }
   }
   function updateRail() {
     const t = now();
@@ -131,46 +158,97 @@
       const isLive = t >= items[i].start && t < items[i].end;
       c.classList.toggle("is-current", isLive);
       c.querySelector(".current-tab").setAttribute("aria-hidden", isLive ? "false" : "true");
+      dots[i].classList.toggle("is-live", isLive);
     });
   }
 
   /* ---------------- Clock ---------------- */
   function tickClock() {
-    clock.innerHTML = hm(now()) + (demo ? " <em>demo</em>" : "");
+    clock.innerHTML = fmtStart(now()) + (demo ? " <em>demo</em>" : "");
   }
 
-  /* ---------------- Scrolling ---------------- */
+  /* ---------------- Scrolling + rail dots ---------------- */
+  function cardH() {
+    return (cards[0] && cards[0].offsetHeight) || timeline.clientHeight || 1;
+  }
   function visibleIndex() {
-    const h = timeline.clientHeight || 1;
+    const h = cardH();
     return Math.max(0, Math.min(items.length - 1, Math.round(timeline.scrollTop / h)));
   }
   function scrollToIndex(i, smooth) {
     const c = cards[i]; if (!c) return;
     timeline.scrollTo({ top: c.offsetTop, behavior: smooth ? "smooth" : "auto" });
   }
-  let raf = 0;
+
+  let settleTimer = 0, arrived = -1, lastVis = -1, raf = 0;
+
+  const easeOut = p => 1 - Math.pow(1 - p, 2);
+
+  /** Place dots for the current scroll position relative to the last settled card. */
+  function syncDots() {
+    const h = cardH();
+    const land = titleLandingY();
+    const delta = timeline.scrollTop - arrived * h;
+    const dir = delta >= 0 ? 1 : -1;
+    const next = arrived + dir;
+    const progress = arrived < 0 ? 1 : Math.min(1, Math.abs(delta) / h);
+
+    dots.forEach((d, i) => {
+      d.style.opacity = "0";
+      d.style.transform = "none";
+    });
+
+    if (arrived < 0) return;
+
+    // Outgoing (or still-settled) dot: ride its title up/down and out.
+    const outY = Math.abs(delta) < 1 ? land : titleCenterY(arrived);
+    setDotCenter(dots[arrived], outY, 0);
+    // Fade only once it's clearly leaving, so a tiny rubber-band doesn't blink it.
+    const outFade = reduceMotion ? (progress > 0.5 ? 0 : 1) : Math.max(0, 1 - progress / 0.85);
+    dots[arrived].style.opacity = String(outFade);
+
+    if (next !== arrived && next >= 0 && next < items.length) {
+      // Incoming: starts 70px below the landing and glides up as the swipe progresses.
+      // Opacity comes up early so it "fades into view as the scroll starts."
+      const p = reduceMotion ? (progress > 0.5 ? 1 : 0) : progress;
+      const extra = DOT_IN_FROM * (1 - easeOut(p));
+      const fade = reduceMotion ? (p >= 1 ? 1 : 0) : Math.min(1, p / 0.35);
+      setDotCenter(dots[next], land, extra);
+      dots[next].style.opacity = String(fade);
+    }
+  }
+
+  function parkDot(i) {
+    dots.forEach((d, k) => {
+      setDotCenter(d, titleLandingY(), 0);
+      d.style.transform = "none";
+      d.style.opacity = k === i ? "1" : "0";
+    });
+  }
+
   timeline.addEventListener("scroll", () => {
     if (raf) return;
     raf = requestAnimationFrame(() => {
       raf = 0;
       const v = visibleIndex();
-      showHeader(v, true);
-      if (v !== lastVis) { lastVis = v; landDot(v); map.show(v, true); }   // dot fades in, map glides to the new place
+      showHeader(v);
+      if (v !== lastVis) { lastVis = v; map.show(v, true); }   // map glides once the next card is the majority
+      syncDots();
     });
     clearTimeout(settleTimer);
     settleTimer = setTimeout(onSettle, 140);   // scroll/snap has come to rest
   }, { passive: true });
 
-  /* Arrival "pinch zoom bump": once per arrival on a card, hint the map is zoomable */
-  let settleTimer = 0, arrived = -1, lastVis = -1;
   function onSettle() {
-    const h = timeline.clientHeight || 1;
+    const h = cardH();
     const i = visibleIndex();
     if (Math.abs(timeline.scrollTop - i * h) > 4) return;   // not snapped yet
-    landDot(i); clearOtherDots(i);                          // old dots are off screen now
-    if (i === arrived) return;
+    const first = arrived < 0;
+    const changed = i !== arrived;
     arrived = i;
-    map.bump();
+    lastVis = i;
+    parkDot(i);
+    if (changed && !first) map.bump({ pulse: true });   // bump + pulse together after a real swipe
   }
 
   /* ---------------- 4. Map: one fixed map, glides between events ---------------- */
@@ -226,7 +304,7 @@
     }
 
     // ---- animation: glide (pan/zoom to a target) and bump (zoom in & back) ----
-    let animRaf = 0, animKind = "", pendingBump = false;
+    let animRaf = 0, animKind = "", pendingBump = false, pendingPulse = false;
     function stopAnim() { if (animRaf) cancelAnimationFrame(animRaf); animRaf = 0; animKind = ""; }
     const ease = p => (p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);   // easeInOutCubic
     function glideTo(target, T) {
@@ -243,15 +321,23 @@
         v.s = s; v.x = b.w / 2 - cx * s; v.y = b.h / 2 - cy * s;
         apply();
         if (p < 1) animRaf = requestAnimationFrame(step);
-        else { animRaf = 0; animKind = ""; if (pendingBump) { pendingBump = false; bump(); } }
+        else { animRaf = 0; animKind = ""; if (pendingBump) { pendingBump = false; const pul = pendingPulse; pendingPulse = false; bump({ pulse: pul }); } }
       };
       animRaf = requestAnimationFrame(step);
     }
-    function bump() {
+    function pulse() {
+      if (reduceMotion) return;
+      el.classList.remove("is-pulse");
+      void el.offsetWidth;
+      el.classList.add("is-pulse");
+    }
+    function bump(opts) {
+      const wantPulse = !!(opts && opts.pulse);
       if (touching || drag) return;                       // never while the user is on the map
-      if (animKind === "glide") { pendingBump = true; return; }   // after the glide lands
+      if (animKind === "glide") { pendingBump = true; pendingPulse = pendingPulse || wantPulse; return; }   // after the glide lands
       if (animKind === "bump") return;
       const b = bounds(); if (!b.w) return;
+      if (wantPulse) pulse();                             // flash with the bump, only after a real swipe
       const base = { s: v.s, x: v.x, y: v.y }, fx = b.w / 2, fy = b.h / 2, T = 600, AMP = 0.06;
       const t1 = performance.now();
       animKind = "bump";
@@ -279,31 +365,36 @@
     }
     function reset() { show(active < 0 ? 0 : active, true); }
 
-    function zoomAt(fx, fy, ns) {
-      const k = Math.min(MAX, Math.max(minScale(), ns)) / v.s;
-      v.x = fx - (fx - v.x) * k; v.y = fy - (fy - v.y) * k; v.s *= k;
-      apply();
+    // ---- gestures ----
+    let t0 = null, lastTap = 0, touching = false;
+    function local(touch) {
+      const r = el.getBoundingClientRect();
+      return { x: touch.clientX - r.left, y: touch.clientY - r.top };
     }
-    // Touch: the map is outside the scroller, so one finger pans and two fingers pinch.
-    let t0 = null, touching = false, lastTap = 0;
-    const local = (t) => { const r = el.getBoundingClientRect(); return { x: t.clientX - r.left, y: t.clientY - r.top }; };
     function startFrom(e) {
+      stopAnim();
       if (e.touches.length >= 2) {
         const a = local(e.touches[0]), b = local(e.touches[1]);
-        t0 = { mode: "pinch", d: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, s: v.s, x: v.x, y: v.y };
+        t0 = { mode: "pinch", s: v.s, x: v.x, y: v.y, d: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 };
       } else if (e.touches.length === 1) {
         const a = local(e.touches[0]);
-        t0 = { mode: "pan", px: a.x, py: a.y, x: v.x, y: v.y };
-      } else t0 = null;
+        t0 = { mode: "pan", s: v.s, x: v.x, y: v.y, px: a.x, py: a.y };
+      }
+    }
+    function zoomAt(lx, ly, ns) {
+      ns = Math.min(MAX, Math.max(minScale(), ns));
+      const k = ns / v.s;
+      v.s = ns; v.x = lx - (lx - v.x) * k; v.y = ly - (ly - v.y) * k;
+      apply();
     }
     el.addEventListener("touchstart", (e) => {
-      stopAnim(); pendingBump = false; touching = true;
       e.preventDefault();
+      touching = true;
       if (e.touches.length === 1) {
-        const nowT = Date.now();
-        if (nowT - lastTap < 300) { lastTap = 0; t0 = null; reset(); return; }
-        lastTap = nowT;
-      } else lastTap = 0;
+        const t = performance.now();
+        if (t - lastTap < 280) { lastTap = 0; reset(); t0 = null; return; }   // double-tap → home
+        lastTap = t;
+      }
       startFrom(e);
     }, { passive: false });
     el.addEventListener("touchmove", (e) => {
@@ -347,27 +438,32 @@
   const map = setupMap(document.getElementById("map"));
 
   /* ---------------- Status refresh ---------------- */
-  function refresh() { showHeader(visibleIndex(), false); updateRail(visibleIndex()); }
+  function refresh() { showHeader(visibleIndex()); updateRail(); }
 
   /* ---------------- Boot ---------------- */
   const start = currentIndex(now());
   scrollToIndex(start, false);
-  showHeader(start, false);
-  updateRail(start);
+  showHeader(start);
+  updateRail();
   map.show(start, false);
   tickClock();
   requestAnimationFrame(() => {
     scrollToIndex(start, false);
     lastVis = start;
+    arrived = start;
     map.show(start, false);
-    setTimeout(() => { landDot(start); }, 120);
-    setTimeout(() => { arrived = start; map.bump(); }, 450);
+    parkDot(start);
+    setTimeout(() => { map.bump(); }, 450);   // first-load zoom hint only; no flash
   });
 
   setInterval(tickClock, 1000);
   setTimeout(function loop() { refresh(); setTimeout(loop, MIN - (now() % MIN)); }, MIN - (now() % MIN));
   document.addEventListener("visibilitychange", () => { if (!document.hidden) { refresh(); tickClock(); } });
-  window.addEventListener("resize", () => { const i = visibleIndex(); scrollToIndex(i, false); });
+  window.addEventListener("resize", () => {
+    const i = visibleIndex();
+    scrollToIndex(i, false);
+    parkDot(arrived >= 0 ? arrived : i);
+  });
 
-  window.PUC_DEBUG = { now, items, currentIndex, scrollToIndex, map };
+  window.PUC_DEBUG = { now, items, currentIndex, scrollToIndex, map, titleLandingY, titleCenterY };
 })();

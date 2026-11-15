@@ -14,7 +14,9 @@
  *   start     Pacific start time (required)
  *   end       Pacific end time (optional; defaults to start + 60 min)
  *   title     big headline on the card
- *   place     key (or array of keys) into PLACES. First key = photo.
+ *   place     key (or array of keys) into PLACES. First key = photo
+ *             (and the map still frames every key).
+ *   photo     optional place key whose image to show (overrides first key)
  *   where     optional custom location text (overrides place names)
  *   note      optional small line under the location
  *   audience  "all" (default) or "sponsors" — sponsors-only cards are
@@ -61,7 +63,9 @@ window.PUC_PLACES = {
 window.PUC_EVENTS = [
   // ---------------- Sunday, Nov 15 (first three events only; Monday to be added later) ----------------
   // Check-in and breakfast overlap (both 9:00–10:00) and sit next door to each other, so they share one card.
-  { id: "sun-checkin",   start: "2026-11-15T09:00", end: "2026-11-15T10:00", title: "Check-in + Breakfast with the Pastors", place: ["church", "fireside"], where: "Check-in at PUC Church · Breakfast in Fireside Room" },
+  // Photo: Fireside Room — that's where the hour is spent (breakfast with the pastors).
+  // The map still frames both the church (#14) and Fireside (#18).
+  { id: "sun-checkin",   start: "2026-11-15T09:00", end: "2026-11-15T10:00", title: "Check-in + Breakfast with the Pastors", place: ["church", "fireside"], photo: "fireside", where: "Check-in at PUC Church · Breakfast in Fireside Room" },
   { id: "sun-worship",   start: "2026-11-15T10:00", end: "2026-11-15T10:30", title: "Worship",            place: "church" },
   { id: "sun-welcome",   start: "2026-11-15T10:30", end: "2026-11-15T11:00", title: "Welcome",            place: "church" }
 ];
