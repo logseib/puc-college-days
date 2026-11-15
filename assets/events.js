@@ -63,7 +63,7 @@ window.PUC_PLACES = {
 window.PUC_EVENTS = [
   // ---------------- Sunday, Nov 15 (first three events only; Monday to be added later) ----------------
   // Check-in and breakfast overlap (both 9:00–10:00) and sit next door to each other, so they share one card.
-  { id: "sun-checkin",   start: "2026-11-15T09:00", end: "2026-11-15T10:00", title: "Check-in + Breakfast with the Pastors", place: ["church", "fireside"], where: "Check-in: PUC Church · Breakfast: Fireside Room" },
+  { id: "sun-checkin",   start: "2026-11-15T09:00", end: "2026-11-15T10:00", title: "Check-in + Breakfast with the Pastors", place: ["church", "fireside"], where: "Check-in at PUC Church · Breakfast in Fireside Room" },
   { id: "sun-worship",   start: "2026-11-15T10:00", end: "2026-11-15T10:30", title: "Worship",            place: "church" },
   { id: "sun-welcome",   start: "2026-11-15T10:30", end: "2026-11-15T11:00", title: "Welcome",            place: "church" }
 ];

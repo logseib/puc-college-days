@@ -54,13 +54,6 @@
     const same = ap(a) === ap(b);
     return hm(a) + (same ? "" : "<small>" + ap(a) + "</small>") + "–" + hm(b) + "<small>" + ap(b) + "</small>";
   }
-  function fmtIn(ms) {
-    const mins = Math.max(1, Math.round(ms / MIN));
-    if (mins < 60) return mins + " min";
-    const h = Math.floor(mins / 60), m = mins % 60;
-    if (h >= 24) { const d = Math.round(h / 24); return d + (d === 1 ? " day" : " days"); }
-    return h + " hr" + (m ? " " + m + " min" : "");
-  }
 
   /* ---------------- 2. Data ---------------- */
   const items = EVENTS.map((e, i) => {
@@ -79,11 +72,6 @@
     const next = items.findIndex(it => it.start > t);
     return next >= 0 ? next : items.length - 1;
   }
-  function statusText(it, t) {
-    if (t >= it.start && t < it.end) return { text: "Now · " + fmtIn(it.end - t) + " left", now: true };
-    if (t < it.start) return { text: "In " + fmtIn(it.start - t), now: false };
-    return { text: "Done", now: false };
-  }
 
   /* ---------------- 3. Render ---------------- */
   const timeline = document.getElementById("timeline");
@@ -100,10 +88,13 @@
     card.className = "card";
     card.dataset.index = it.index;
     card.innerHTML =
-      '<h2 class="title">' + esc(it.title) + "</h2>" +
-      '<div class="where">' + esc(where) + (sub ? '<span class="note">' + esc(sub) + "</span>" : "") +
-        (it.note ? '<span class="note">' + esc(it.note) + "</span>" : "") + "</div>" +
-      (p0.img ? '<img class="photo" alt="' + esc(p0.name || "") + '" src="' + IMG_DIR + esc(p0.img) + '"' + (it.index ? ' loading="lazy"' : "") + ">" : "") +
+      '<div class="block">' +
+        '<div class="current-tab" aria-hidden="true">Current event</div>' +
+        '<h2 class="title">' + esc(it.title) + "</h2>" +
+        '<div class="where"><span class="where-k">Location:</span> ' + esc(where) + (sub ? '<span class="note">' + esc(sub) + "</span>" : "") +
+          (it.note ? '<span class="note">' + esc(it.note) + "</span>" : "") + "</div>" +
+        (p0.img ? '<img class="photo" alt="' + esc(p0.name || "") + '" src="' + IMG_DIR + esc(p0.img) + '"' + (it.index ? ' loading="lazy"' : "") + ">" : "") +
+      "</div>" +
       '<div class="map" aria-label="Campus map, ' + esc(where) + '">' +
         '<div class="map-stage"><img alt="" draggable="false" src="' + esc(MAP.src) + '"></div>' +
         '<div class="map-blur"></div><div class="map-fade"></div>' +
@@ -124,12 +115,8 @@
   /* ---------------- Sticky header (cross-fade) ---------------- */
   let shown = -1, front = 0;
   function fillLayer(layer, it, t) {
-    const st = statusText(it, t);
     layer.querySelector(".bar-date").textContent = fmtDay(it.start);
     layer.querySelector(".bar-time").innerHTML = fmtRange(it.start, it.end);
-    const s = layer.querySelector(".bar-status");
-    s.textContent = st.text;
-    s.classList.toggle("is-now", st.now);
   }
   function showHeader(i, animate) {
     const it = items[i]; if (!it) return;
@@ -146,6 +133,11 @@
   function updateRail(here) {
     const live = currentIndex(now());
     const t = now();
+    cards.forEach((c, i) => {
+      const isLive = t >= items[i].start && t < items[i].end;
+      c.classList.toggle("is-current", isLive);
+      c.querySelector(".current-tab").setAttribute("aria-hidden", isLive ? "false" : "true");
+    });
     ticks.forEach((b, i) => {
       b.classList.toggle("is-here", i === here);
       b.classList.toggle("is-live", i === live && t >= items[i].start && t < items[i].end);
@@ -175,7 +167,20 @@
       showHeader(v, true);
       updateRail(v);
     });
+    clearTimeout(settleTimer);
+    settleTimer = setTimeout(onSettle, 140);   // scroll/snap has come to rest
   }, { passive: true });
+
+  /* Arrival "pinch zoom bump": once per arrival on a card, hint the map is zoomable */
+  let settleTimer = 0, arrived = -1;
+  function onSettle() {
+    const h = timeline.clientHeight || 1;
+    const i = visibleIndex();
+    if (Math.abs(timeline.scrollTop - i * h) > 4) return;   // not snapped yet
+    if (i === arrived) return;
+    arrived = i;
+    if (maps[i]) maps[i].bump();
+  }
 
   /* ---------------- 4. Map: pinch / pan / double-tap ---------------- */
   function setupMap(el, it) {
@@ -235,7 +240,26 @@
       const s = Math.max(minScale(), Math.min(MAX, Math.min(b.w, b.h) / span));
       return { s, x: b.w / 2 - cx * s, y: b.h / 2 - cy * s };
     }
+    // quick zoom-in-and-back around the frame center (1 → 1.06 → 1, ~600 ms)
+    let bumpRaf = 0;
+    function cancelBump() { if (bumpRaf) { cancelAnimationFrame(bumpRaf); bumpRaf = 0; } }
+    function bump() {
+      if (t0 || drag || bumpRaf) return;                 // never while the user is on the map
+      const b = bounds(); if (!b.w) return;
+      const base = { s: v.s, x: v.x, y: v.y }, fx = b.w / 2, fy = b.h / 2, T = 600, AMP = 0.06;
+      const t1 = performance.now();
+      const step = (tNow) => {
+        const p = Math.min(1, (tNow - t1) / T);
+        const k = 1 + AMP * Math.pow(Math.sin(Math.PI * p), 2);   // eased up & back
+        v.s = base.s * k; v.x = fx - (fx - base.x) * k; v.y = fy - (fy - base.y) * k;
+        apply();
+        if (p < 1) bumpRaf = requestAnimationFrame(step);
+        else { Object.assign(v, base); apply(); bumpRaf = 0; }
+      };
+      bumpRaf = requestAnimationFrame(step);
+    }
     function reset() {
+      cancelBump();
       home = computeHome(); if (!home) return;
       Object.assign(v, home); apply();
       el.classList.remove("is-engaged");
@@ -249,6 +273,7 @@
     let t0 = null, lastTap = 0;
     const local = (t) => { const r = el.getBoundingClientRect(); return { x: t.clientX - r.left, y: t.clientY - r.top }; };
     el.addEventListener("touchstart", (e) => {
+      cancelBump();
       if (e.touches.length === 2) {
         const a = local(e.touches[0]), b = local(e.touches[1]);
         t0 = { mode: "pinch", d: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, s: v.s, x: v.x, y: v.y };
@@ -295,14 +320,14 @@
       el.classList.add("is-engaged");
     }, { passive: false });
     let drag = null;
-    el.addEventListener("mousedown", (e) => { drag = { px: e.clientX, py: e.clientY, x: v.x, y: v.y }; e.preventDefault(); });
+    el.addEventListener("mousedown", (e) => { cancelBump(); drag = { px: e.clientX, py: e.clientY, x: v.x, y: v.y }; e.preventDefault(); });
     window.addEventListener("mousemove", (e) => { if (!drag) return; v.x = drag.x + e.clientX - drag.px; v.y = drag.y + e.clientY - drag.py; apply(); });
     window.addEventListener("mouseup", () => { drag = null; });
     el.addEventListener("dblclick", reset);
 
     window.addEventListener("resize", reset);
     reset();
-    return { reset };
+    return { reset, bump };
   }
   const maps = cards.map((c, i) => setupMap(c.querySelector(".map"), items[i]));
 
@@ -315,7 +340,10 @@
   showHeader(start, false);
   updateRail(start);
   tickClock();
-  requestAnimationFrame(() => { maps.forEach(m => m.reset()); scrollToIndex(start, false); });
+  requestAnimationFrame(() => {
+    maps.forEach(m => m.reset()); scrollToIndex(start, false);
+    setTimeout(() => { arrived = start; maps[start] && maps[start].bump(); }, 450);
+  });
 
   setInterval(tickClock, 1000);
   setTimeout(function loop() { refresh(); setTimeout(loop, MIN - (now() % MIN)); }, MIN - (now() % MIN));
