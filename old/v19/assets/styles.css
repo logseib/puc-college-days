@@ -1,0 +1,475 @@
+/* =====================================================================
+ * PUC College Days — styles (v19 : UP NEXT Hh Mm / 0h Mm / M:SS pulse; title baseline fix)
+ * Light gray paper, dark ink. Sticky header is only the date + clock.
+ * Event time + title share one line next to the rail bullet. Photos
+ * are 3:2. One fixed map in the bottom half of the screen, with the
+ * v5 feathered rim and a slightly taller fade on the top edge.
+ * Cards are sized to the space above the map. No rounded corners.
+ * ===================================================================== */
+
+:root {
+  --bg: #d2d2d2;            /* v3: 10% darker than #e9e9e9 */
+  --ink: #161616;
+  --muted: #5f5f5f;
+  --faint: #a6a6a6;
+  --red: #e1251b;
+  --blue: #1b5ee1;          /* same saturation/lightness as --red, hue 217 */
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --bar-h: 44px;          /* date + clock only */
+  --map-h: 47vh;          /* almost half the page */
+  --gutter: 34px;         /* equal left/right margin; the rail sits in the left one */
+  --pad-r: var(--gutter);
+  --rail-x: 14px;
+  --dot: 10px;
+  /* v5 inset fade is blur 24px + spread 14px ≈ 38px on every edge.
+     v7 keeps that rim and makes only the top edge ~1.5× taller (57px). */
+  --map-fade: 38px;
+  --map-fade-top: 57px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); }
+body {
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;                 /* the timeline is the only scroller */
+  overscroll-behavior: none;
+}
+
+/* ---------- Sticky header: date left, live clock right ---------- */
+.bar {
+  position: fixed; z-index: 10; top: 0; left: 0; right: 0;
+  height: calc(var(--safe-top) + var(--bar-h));
+  padding: var(--safe-top) var(--pad-r) 0 var(--gutter);
+  background: var(--bg);
+  display: flex; justify-content: space-between; align-items: center;
+  pointer-events: none;
+}
+/* soft fade under the header so cards slide out of view quietly */
+.bar::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 16px;
+  background: linear-gradient(var(--bg), rgba(210, 210, 210, 0));
+}
+.bar-date {
+  font-size: 14px; font-weight: 500; letter-spacing: -.01em;
+  color: var(--ink); line-height: 1.2;
+}
+.clock {
+  font-variant-numeric: tabular-nums;
+  font-size: 14px; font-weight: 500; letter-spacing: -.01em;
+  color: var(--ink); line-height: 1.2;
+}
+.clock em { font-style: normal; font-weight: 400; color: var(--muted); margin-left: 4px; }
+
+/* ---------- Left rail: fixed hairline that fades out top + bottom ---------- */
+.rail {
+  position: fixed; z-index: 0; pointer-events: none;
+  left: calc(var(--rail-x) - .5px); width: 1px;
+  top: calc(var(--safe-top) + var(--bar-h) + 4px);
+  bottom: calc(var(--map-h) + 6px);           /* stops above the full-width map */
+  background: #7d7d7d;
+  -webkit-mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent);
+          mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent);
+}
+
+/* Dots live outside the rail so the fade mask doesn't hide them */
+.dots {
+  position: fixed; z-index: 6; pointer-events: none;
+  left: 0; top: 0; bottom: var(--map-h); width: var(--gutter);
+  overflow: hidden;
+}
+.dot {
+  position: absolute;
+  left: calc(var(--rail-x) - var(--dot) / 2);
+  top: 0;
+  width: var(--dot); height: var(--dot); border-radius: 50%;
+  background: var(--ink);
+  opacity: 0;
+  will-change: transform, opacity;
+}
+.dot.is-live { background: var(--red); }
+
+/* ---------- Timeline scroller (snap) ---------- */
+.timeline {
+  position: fixed; top: 0; left: 0; right: 0;
+  bottom: var(--map-h);             /* the scroller ends above the fixed map */
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  scrollbar-width: none;
+}
+.timeline::-webkit-scrollbar { display: none; }
+
+.card {
+  height: 100%;                     /* one card = the space above the map */
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  display: flex; flex-direction: column;
+  padding: calc(var(--safe-top) + var(--bar-h) + 22px) var(--pad-r) 22px var(--gutter);
+  gap: 12px;
+}
+@supports (height: 1dvh) { :root { --map-h: 47dvh; } }
+
+/* content block: title, location, photo. (v8: no red outline) */
+.block {
+  position: relative; flex: 0 1 auto; min-height: 0;   /* hugs its content; shrinks (photo first) on short screens */
+  display: flex; flex-direction: column; gap: 9px;
+  padding: 10px;
+  margin: 0 -10px;
+  border: 2px solid transparent; border-radius: 0;   /* transparent border keeps v7 spacing */
+}
+
+/* One line: "10:00AM : Worship" — time in the title weight, name lighter.
+ * The compact "RIGHT NOW" / "UP NEXT (...)" badge is floated to the
+ * end of the first line (same shape; red / blue). The time (.lead) stays
+ * in normal flow with the name so they share a baseline at every width
+ * (v19: a left-floated lead was pushing the first line of the name down
+ * on 320px). A long name wraps under the badge at full width. */
+.title {
+  margin: 0;
+  display: block;
+  min-width: 0;
+  font-size: 22px; font-weight: 600; line-height: 1.2; letter-spacing: -.015em;
+  flex: 0 0 auto;
+}
+.title::after { content: ""; display: table; clear: both; }
+.title .lead { white-space: nowrap; }
+.title .when, .title .sep { font-weight: 600; }
+.title .name { font-weight: 300; }
+.now-tag,
+.next-tag {
+  display: none;
+  float: right;
+  margin-left: 8px;
+  /* optically center on the first 22px/1.2 line: (1.2em - badge height) / 2 */
+  margin-top: calc((1.2em - 9px - 5px) / 2);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 9px; font-weight: 600; line-height: 1;
+  letter-spacing: .08em; text-transform: uppercase;
+  padding: 3px 5px 2px;
+  border-radius: 0;                 /* square corners */
+  white-space: nowrap;
+  pointer-events: none;
+}
+.now-tag { background: var(--red); }
+.next-tag { background: var(--blue); }
+.card.is-current .now-tag { display: inline-block; }
+.card.is-up-next .next-tag { display: inline-block; }
+
+/* v19: calm pulse while UP NEXT is in live M:SS mode (under 10 minutes).
+ * Transform + box-shadow only, so layout does not shift. */
+.next-tag.is-ticking {
+  transform-origin: center center;
+  animation: up-next-pulse 1.6s ease-in-out infinite;
+}
+@keyframes up-next-pulse {
+  0%, 100% { transform: scale(1);    box-shadow: 0 0 0 0   rgba(27, 94, 225, 0); }
+  50%      { transform: scale(1.06); box-shadow: 0 0 0 5px rgba(27, 94, 225, 0.28), 0 0 10px 2px rgba(27, 94, 225, 0.18); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .next-tag.is-ticking {
+    animation-name: up-next-pulse-rm;
+  }
+  @keyframes up-next-pulse-rm {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.72; }
+  }
+}
+
+.where {
+  flex: 0 0 auto;
+  font-family: var(--mono); font-size: 15px; line-height: 1.4; letter-spacing: .01em;  /* v8: +2px from 13px */
+  color: #262626;
+}
+.where-k { color: var(--muted); }
+.where .note { display: block; }
+
+/* 3:2 crop, same width as the text column. Won't grow taller than 3:2;
+ * on short screens it may shrink so the title and location stay visible. */
+.photo-wrap {
+  flex: 0 1 auto; min-height: 0;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  position: relative;
+  overflow: hidden;
+  background: #c4c4c4;
+}
+.photo {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover; display: block;
+  border-radius: 0;                 /* square corners */
+  filter: saturate(.9);
+}
+/* Church exterior: shift the 3:2 cover-crop down so the lawn sign is in
+ * frame and the big blue sky is reduced. 85% keeps the sign fully visible
+ * even when the photo wrap shrinks on short screens. */
+.photo.is-church { object-position: center 85%; }
+
+/* Exterior → interior slider (only when a place has an interior photo).
+ * The track is two frames wide and slides horizontally inside the 3:2 wrap. */
+.photo-track {
+  position: absolute; inset: 0;
+  overflow: hidden;
+}
+/* v9: each photo fills the whole frame on its own and slides by its own
+ * width (iOS Safari mis-sized the old 200%-wide flex track). */
+.photo-track .photo {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  transform: translateX(0);
+  transition: transform 600ms ease;
+  will-change: transform;
+}
+.photo-track .photo:last-child { transform: translateX(100%); }
+.photo-track.is-interior .photo:first-child { transform: translateX(-100%); }
+.photo-track.is-interior .photo:last-child { transform: translateX(0); }
+.photo-track.no-anim .photo { transition: none; }
+.photo-track.no-anim { transition: none; }
+
+/* ---------- Illustrated campus map: v5 feathered rim, taller top fade ---------- */
+.map {
+  position: fixed; z-index: 5; left: 0; right: 0; bottom: 0;
+  height: var(--map-h);
+  overflow: hidden; border-radius: 0;   /* square corners */
+  background: var(--bg);
+  touch-action: none;               /* outside the scroller: one finger pans, two pinch */
+  -webkit-user-select: none; user-select: none;
+  cursor: grab;
+}
+.map-stage {
+  position: absolute; left: 0; top: 0;
+  transform-origin: 0 0; will-change: transform;
+  mix-blend-mode: multiply;         /* paper of the map melts into the gray */
+}
+.map-stage img {
+  display: block; width: 100%; height: 100%;
+  -webkit-user-drag: none; pointer-events: none;
+}
+/* v5 blur: a frosted, feathered rim around the map window; center stays sharp */
+.map-blur {
+  position: absolute; inset: 0; pointer-events: none;
+  -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+  -webkit-mask-image: radial-gradient(ellipse 72% 70% at 50% 50%, transparent 39%, #000 100%);
+          mask-image: radial-gradient(ellipse 72% 70% at 50% 50%, transparent 39%, #000 100%);
+}
+/* v7: only the top edge gets a little more blur, matching the taller paper fade */
+.map-blur-top {
+  position: absolute; left: 0; right: 0; top: 0;
+  height: var(--map-fade-top);
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 28%, transparent 100%);
+          mask-image: linear-gradient(to bottom, #000 0%, #000 28%, transparent 100%);
+}
+/* v5 inset paper fade on every edge, plus a ~1.5× taller dissolve at the top */
+.map-fade {
+  position: absolute; inset: 0; pointer-events: none;
+  box-shadow: inset 0 0 24px 14px var(--bg);
+  background: linear-gradient(to bottom, var(--bg) 0, rgba(210, 210, 210, 0) var(--map-fade-top));
+}
+/* brief, very subtle flash when the map updates after a scroll settles */
+.map-flash {
+  position: absolute; inset: 0; pointer-events: none;
+  background: #fff; opacity: 0;
+}
+.map.is-pulse .map-flash { animation: mapFlash 320ms ease-out; }
+@keyframes mapFlash {
+  0%   { opacity: 0; }
+  28%  { opacity: .10; }
+  100% { opacity: 0; }
+}
+.map-pin {
+  position: absolute; pointer-events: none;
+  border: 2px solid var(--red); border-radius: 50%;   /* the circle itself stays round */
+  background: rgba(225, 37, 27, .10);
+  transform: translate(-50%, -50%);
+  opacity: 0; transition: opacity .35s ease;   /* circles cross-fade between events */
+}
+.map-pin.is-on { opacity: 1; }
+/* v9: straight-segment area outline (Free Time), same red as the circles */
+.map-area {
+  position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible;
+  transform-origin: 0 0;
+  opacity: 0; transition: opacity .35s ease;
+}
+.map-area.is-on { opacity: 1; }
+.map-area polygon {
+  fill: rgba(225, 37, 27, .10);
+  stroke: var(--red); stroke-width: 2px; stroke-linejoin: miter;
+}
+.map-cap {
+  /* v16: bottom-left, so it stays clear of the expand button at bottom-right.
+     Same safe-area insets in both normal and full-screen, so it does not jump. */
+  position: absolute;
+  left: calc(env(safe-area-inset-left, 0px) + 10px);
+  right: auto;
+  bottom: calc(var(--safe-bottom) + 10px);
+  pointer-events: none;
+  font-family: var(--mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted); opacity: .8;
+}
+
+/* Idle "SWIPE UP" hint: same type as pinch-to-zoom, sits just above the map.
+ * Invisible until it pulses (opacity 0 → .8 → 0, with a slight upward drift). */
+.scroll-hint {
+  position: fixed; z-index: 6;
+  left: 0; right: 0;
+  bottom: calc(var(--map-h) + 8px);
+  pointer-events: none;
+  text-align: center;
+  font-family: var(--mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted);
+  opacity: 0;
+}
+.scroll-hint-arrow {
+  display: inline-block;
+  width: 0; height: 0;
+  border-left: 3px solid transparent;
+  border-right: 3px solid transparent;
+  border-bottom: 5px solid currentColor;
+  margin-right: 5px;
+  vertical-align: 1px;
+  letter-spacing: 0;
+}
+.scroll-hint.is-pulse { animation: scrollHint 900ms ease-out; }
+@keyframes scrollHint {
+  0%   { opacity: 0; transform: translateY(6px); }
+  28%  { opacity: .8; transform: translateY(0); }
+  70%  { opacity: .8; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-4px); }
+}
+
+.noscript { padding: 120px 24px; text-align: center; color: var(--muted); }
+
+/* ---------- v10: scroll pulse (v12: the down arrow is gone) ---------- */
+/* Scroll pulse (like the map's zoom bump): the snapped card and the rail
+ * dots nudge up and ease back. Transform only, so snap/scrollTop stay put. */
+/* (Not on .card itself: moving a snap target makes the browser re-snap.) */
+.card.is-nudge > .block,
+.dots.is-nudge { animation: scrollNudge 650ms cubic-bezier(.33, 0, .25, 1); }
+@keyframes scrollNudge {
+  0%   { transform: translateY(0); }
+  38%  { transform: translateY(-24px); }
+  100% { transform: translateY(0); }
+}
+
+/* ---------- v10: Add to Home Screen tip + little plus button ----------
+ * Ported from Who's On Duty (which took it from the Card Tracker site).
+ * Same structure and rules; restyled for this page: paper gray, mono,
+ * square corners, one red hairline on top. */
+#a2hs {
+  position: fixed; z-index: 30;
+  left: 12px; right: 12px; bottom: calc(12px + var(--safe-bottom));
+  max-width: 420px; margin: 0 auto;
+  background: #e6e6e6;
+  border: 1px solid #b4b4b4; border-top: 3px solid var(--red);
+  border-radius: 0;
+  padding: 16px 18px 12px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .14);
+  font-family: var(--mono); font-size: 13px; line-height: 1.45; letter-spacing: .01em;
+  color: var(--ink);
+  display: none;
+}
+#a2hs .a2hsHead { display: flex; align-items: center; gap: 12px; padding-right: 28px; }
+#a2hs .appicon { width: 60px; height: 60px; flex: none; border-radius: 13.4px; overflow: hidden; display: block; }
+#a2hs .a2hsHead b {
+  font-family: var(--sans); font-size: 16px; font-weight: 600; letter-spacing: -.01em;
+}
+#a2hs b { font-weight: 600; }
+#a2hs p { margin: 8px 0 10px; color: var(--muted); }
+#a2hs ol { list-style: none; margin: -2px 0 0; padding: 0; counter-reset: s; }
+#a2hs li { display: flex; align-items: center; gap: 10px; padding: 5px 0; color: var(--ink); counter-increment: s; }
+#a2hs li::before { content: counter(s); font-size: 11px; color: var(--muted); width: 10px; }
+#a2hs .ic {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: 0; background: #d2d2d2; flex: none;
+}
+#a2hs .ic path, #a2hs .ic rect { stroke: #3a3a3a; }
+#a2hs .x {
+  position: absolute; top: 2px; right: 6px;
+  background: none; border: 0; color: var(--ink);
+  font: 300 30px/1 var(--sans); padding: 6px 8px; margin: 0; cursor: pointer;
+}
+/* v14: the plus button lives in the header, just left of the clock.
+ * Small and quiet : no fill, muted ink, same 20px line icon. The header
+ * itself ignores taps (pointer-events: none), so the button opts back in. */
+.bar-right { display: flex; align-items: center; gap: 6px; margin-right: -4px; }
+.bar-right .clock { margin-right: 4px; }
+#help {
+  pointer-events: auto;
+  width: 30px; height: 30px; margin: 0; padding: 0;
+  background: none;
+  color: var(--muted); border: 0; border-radius: 0; box-shadow: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+#help:active { color: var(--red); }
+#help svg { display: block; width: 19px; height: 19px; }
+#help svg * { stroke: currentColor; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- v14/v16: full-screen map ----------
+ * A CSS overlay (not the Fullscreen API, which iOS Safari only allows for
+ * video). v16: the toggle sits in the map's bottom-right corner, the
+ * same screen position in both normal and full-screen (the map is fixed
+ * to the bottom of the viewport). Safe-area insets are applied in both
+ * states so the button does not jump. PINCH TO ZOOM is at bottom-left;
+ * the SWIPE UP hint stays centered above the map; rail dots stay left.
+ * The A2HS popup (z 30) covers the button while open, then hides in
+ * full-screen. Tap target is 40px. */
+.map-full-btn {
+  position: fixed; z-index: 7;
+  right: calc(env(safe-area-inset-right, 0px) + 10px);
+  bottom: calc(var(--safe-bottom) + 10px);
+  width: 40px; height: 40px; margin: 0; padding: 0;
+  background: rgba(210, 210, 210, .82);
+  color: var(--ink); border: 0; border-radius: 0; box-shadow: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.map-full-btn svg { display: block; width: 18px; height: 18px; }
+.map-full-btn svg * { stroke: currentColor; fill: none; stroke-width: 1.5; stroke-linecap: square; stroke-linejoin: miter; }
+.map-full-btn:active { color: var(--red); }
+
+html.is-map-full .map {
+  z-index: 40;                      /* above the header, dots, hints and the A2HS tip */
+  top: 0; height: 100vh; height: 100dvh;
+  cursor: grab;
+}
+html.is-map-full .map-full-btn {
+  z-index: 41;
+  /* bottom-right insets are unchanged, so the button does not move */
+}
+html.is-map-full .map-full-btn::after {   /* one red hairline under the collapse icon : "you are in full screen" */
+  content: ""; position: absolute; left: 8px; right: 8px; bottom: 4px; height: 1px; background: var(--red);
+}
+html.is-map-full .timeline { overflow: hidden; }                 /* no timeline swipes underneath */
+html.is-map-full .scroll-hint,
+html.is-map-full #a2hs,
+html.is-map-full #help { visibility: hidden; }
+html.is-map-full, html.is-map-full body { overflow: hidden; overscroll-behavior: none; touch-action: none; }
+
+@keyframes scrollHintFade {
+  0%, 100% { opacity: 0; }
+  28%, 70% { opacity: .8; }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* v12: scroll nudge intentionally NOT disabled under reduced motion. */
+  .map.is-pulse .map-flash { animation: none; }
+  .scroll-hint.is-pulse { animation: scrollHintFade 900ms ease-out; }
+  /* Interior swap becomes a crossfade; the track does not slide. */
+  .photo-track .photo,
+  .photo-track .photo:last-child,
+  .photo-track.is-interior .photo:first-child,
+  .photo-track.is-interior .photo:last-child {
+    transform: none; opacity: 1; transition: opacity 600ms ease;
+  }
+  .photo-track .photo:last-child { opacity: 0; }
+  .photo-track.is-interior .photo:first-child { opacity: 0; }
+  .photo-track.is-interior .photo:last-child { opacity: 1; }
+}
