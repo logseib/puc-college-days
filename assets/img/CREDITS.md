@@ -33,4 +33,11 @@ Source page: https://www.puc.edu/about-puc/campus-map (each building's photo in 
 - PUC Airport / Back 40 trail: no photo found on puc.edu or Commons → the hike card uses the general "Angwin scenery" photo instead.
 - "Free Time" has no single place → uses the gradient fallback on purpose (`img: null` in events.js).
 
-Map tiles: © OpenStreetMap contributors (ODbL), rendered with Leaflet.
+## Campus map (v2)
+| File | Source |
+|---|---|
+| puc-campus-map.webp | PUC official campus map PDF (10/2024): https://www.puc.edu/_media/pdf/about-puc/PUC-Campus-Map.pdf, linked from https://www.puc.edu/about-puc/campus-map. Page 1 rasterized at 400 dpi with poppler `pdftoppm`, cropped to the illustrated map (3145 × 2046 px), saved as grayscale WebP (q80). © Pacific Union College. |
+
+Only puc-church.jpg and puc-fireside.jpg are shown on the v2 (Sunday, first three events) page; the other photos stay for later days.
+
+(v1, kept in old/: map tiles © OpenStreetMap contributors (ODbL), rendered with Leaflet.)
