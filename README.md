@@ -1,4 +1,11 @@
-# PUC College Days — live student timeline (DEMO)
+# PUC College Days — live student timeline (v2 · Sunday)
+
+**v2 (Nov 14, 2026):** Sunday Nov 15 only, first three events (Check-in + Breakfast, Worship, Welcome). Light gray, minimal; date + time range are a fixed header that cross-fades between events; thin progress rail on the left; tiny HH:MM clock. Map = PUC's illustrated PDF campus map (`assets/img/puc-campus-map.webp`), multiply-blended, blurred/feathered rim, pinch to zoom (after a pinch, one finger pans; double-tap resets), red circle per place (pixel coords `mapX/mapY/mapR` in `assets/events.js`; the illustration is rotated: north = left). No Leaflet/OSM, no rounded corners. The previous version is kept untouched in `old/` (open `old/index.html`).
+
+The notes below describe v1 and are kept for reference.
+
+---
+
 
 Single-page, phone-first schedule for TAA students at PUC College Days (Pacific Union College, Angwin CA, Nov 14–16, 2026).
 Plain HTML/CSS/JS, **no build step**. GitHub Pages–ready: push this folder and serve from the repo root.
