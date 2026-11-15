@@ -1,5 +1,5 @@
 /* =====================================================================
- * PUC College Days — styles (v11)
+ * PUC College Days — styles (v12)
  * Light gray paper, dark ink. Sticky header is only the date + clock.
  * Event time + title share one line next to the rail bullet. Photos
  * are 3:2. One fixed map in the bottom half of the screen, with the
@@ -315,33 +315,11 @@ body {
 
 .noscript { padding: 120px 24px; text-align: center; color: var(--muted); }
 
-/* ---------- v10: faint down arrow + scroll pulse ---------- */
-/* Wide, shallow chevron centered in the gap under the photo, just above the
- * map (app.js sets `bottom` per card to center it in that gap). Visual only.
- * Bobs ~5px over 2.4s. Not rendered on the last event. */
-.card { position: relative; }
-.card-arrow {
-  position: absolute; left: 50%; bottom: 9px;
-  width: 60px; height: 12px; margin-left: -30px;
-  pointer-events: none;
-  opacity: .3;
-  transition: opacity .25s ease;
-  animation: arrowBob 2.4s ease-in-out infinite;
-}
-.card-arrow svg { display: block; overflow: visible; }
-.card-arrow path { fill: none; stroke: var(--ink); stroke-width: 1.25px; stroke-linecap: round; stroke-linejoin: round; }
-@keyframes arrowBob {
-  0%, 100% { transform: translateY(-2px); }
-  50%      { transform: translateY(3px); }
-}
-/* while the SWIPE UP text pulses in the same gap, the arrow steps aside */
-body.is-hinting .card-arrow { opacity: 0; }
-
+/* ---------- v10: scroll pulse (v12: the down arrow is gone) ---------- */
 /* Scroll pulse (like the map's zoom bump): the snapped card and the rail
  * dots nudge up and ease back. Transform only, so snap/scrollTop stay put. */
 /* (Not on .card itself: moving a snap target makes the browser re-snap.) */
 .card.is-nudge > .block,
-.card.is-nudge > .card-arrow svg,
 .dots.is-nudge { animation: scrollNudge 650ms cubic-bezier(.33, 0, .25, 1); }
 @keyframes scrollNudge {
   0%   { transform: translateY(0); }
@@ -406,8 +384,7 @@ body.is-hinting .card-arrow { opacity: 0; }
   28%, 70% { opacity: .8; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .card-arrow { animation: none; }
-  .card.is-nudge > .block, .card.is-nudge > .card-arrow svg, .dots.is-nudge { animation: none; }
+  /* v12: scroll nudge intentionally NOT disabled under reduced motion. */
   .map.is-pulse .map-flash { animation: none; }
   .scroll-hint.is-pulse { animation: scrollHintFade 900ms ease-out; }
   /* Interior swap becomes a crossfade; the track does not slide. */

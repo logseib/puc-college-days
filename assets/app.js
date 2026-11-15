@@ -136,9 +136,7 @@
         '<div class="where"><span class="where-k">Location :</span> ' + esc(where) + (sub ? '<span class="note">' + esc(sub) + "</span>" : "") +
           (it.note ? '<span class="note">' + esc(it.note) + "</span>" : "") + "</div>" +
         photoHTML(p0, it.index) +
-      "</div>" +
-      // v10: faint down chevron below the photo (visual only); none on the last event
-      (it.index < items.length - 1 ? '<div class="card-arrow" aria-hidden="true"><svg viewBox="0 0 60 12" width="60" height="12"><path d="M1 1.5 L30 10.5 L59 1.5"/></svg></div>' : "");
+      "</div>";
     timeline.appendChild(card);
   });
   const cards = Array.from(timeline.children);
@@ -344,33 +342,18 @@
   /* v10 scroll pulse: like the map's zoom bump, the snapped card (and its
    * rail dot) nudges up ~24px and eases back over 650ms. Pure transform:
    * scrollTop, snap and the dot parallax math are untouched. Skipped on the
-   * last event and with reduced motion. While it (and the SWIPE UP text)
-   * plays, the faint down arrow steps aside so the two don't stack. */
+   * last event and with reduced motion. */
   const NUDGE_MS = 650, NUDGE_FIRST = 1200;
   let nudgeTimer = 0;
   function nudge() {
-    if (reduceMotion || !canHint()) return;
+    if (!canHint()) return;   // v12: plays even with Reduce Motion on (Logan asked)
     const i = arrived >= 0 ? arrived : visibleIndex();
     const card = cards[i]; if (!card) return;
     [card, dotsEl].forEach(el => { el.classList.remove("is-nudge"); void el.offsetWidth; el.classList.add("is-nudge"); });
-    document.body.classList.add("is-hinting");
     clearTimeout(nudgeTimer);
     nudgeTimer = setTimeout(() => {
       card.classList.remove("is-nudge"); dotsEl.classList.remove("is-nudge");
-      document.body.classList.remove("is-hinting");
-    }, 950);   // the SWIPE UP text pulse is 900ms
-  }
-
-  /* Center each card's faint arrow in the gap between its photo (block) and
-   * the card's bottom edge, i.e. just above the map. Never closer than 9px
-   * to the map. */
-  function placeArrows() {
-    cards.forEach(card => {
-      const a = card.querySelector(".card-arrow"), b = card.querySelector(".block");
-      if (!a || !b) return;
-      const below = card.clientHeight - (b.offsetTop + b.offsetHeight) + parseFloat(getComputedStyle(b).paddingBottom || 0);
-      a.style.bottom = Math.max(9, Math.round((below - a.offsetHeight) / 2)) + "px";
-    });
+    }, 950);   // a little longer than the 650ms pulse
   }
 
   timeline.addEventListener("scroll", () => {
@@ -633,7 +616,6 @@
     arrived = start;
     map.show(start, false);
     parkDot(start);
-    placeArrows();
     armSlide(start);
     armHint();
     setTimeout(() => { map.bump(); }, 450);   // first-load zoom hint only; no flash
@@ -651,9 +633,8 @@
     const i = visibleIndex();
     scrollToIndex(i, false);
     parkDot(arrived >= 0 ? arrived : i);
-    placeArrows();
     armHint();
   });
 
-  window.PUC_DEBUG = { now, items, currentIndex, scrollToIndex, map, titleLandingY, titleCenterY, cardH, syncDots, parkDot, armSlide, resetTracks, armHint, fireHint, clearHint, DOT_TRAVEL, HINT_IDLE, dots, timeline, SLIDE_DWELL, nudge, placeArrows };
+  window.PUC_DEBUG = { now, items, currentIndex, scrollToIndex, map, titleLandingY, titleCenterY, cardH, syncDots, parkDot, armSlide, resetTracks, armHint, fireHint, clearHint, DOT_TRAVEL, HINT_IDLE, dots, timeline, SLIDE_DWELL, nudge };
 })();
