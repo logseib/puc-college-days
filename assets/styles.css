@@ -1,5 +1,5 @@
 /* =====================================================================
- * PUC College Days — styles (v19 : UP NEXT Hh Mm / 0h Mm / M:SS pulse; title baseline fix)
+ * PUC College Days — styles (v20 : badge vertically centered on the title's first line)
  * Light gray paper, dark ink. Sticky header is only the date + clock.
  * Event time + title share one line next to the rail bullet. Photos
  * are 3:2. One fixed map in the bottom half of the screen, with the
@@ -145,8 +145,12 @@ body {
   display: none;
   float: right;
   margin-left: 8px;
-  /* optically center on the first 22px/1.2 line: (1.2em - badge height) / 2 */
-  margin-top: calc((1.2em - 9px - 5px) / 2);
+  /* Vertically center on the title's first line box.
+   * Do not use em here: these tags are 9px, so 1.2em was 10.8px and
+   * margin-top computed to -1.6px, sitting ~7px too high (near the caps).
+   * The first-line client rect is 25px tall; the badge is 14px
+   * (9px + padding 3/2). (25 - 14) / 2 = 5.5px. */
+  margin-top: 5.5px;
   color: #fff;
   font-family: var(--mono);
   font-size: 9px; font-weight: 600; line-height: 1;
