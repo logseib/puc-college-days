@@ -1,5 +1,5 @@
 /* =====================================================================
- * PUC College Days — styles (v8)
+ * PUC College Days — styles (v10)
  * Light gray paper, dark ink. Sticky header is only the date + clock.
  * Event time + title share one line next to the rail bullet. Photos
  * are 3:2. One fixed map in the bottom half of the screen, with the
@@ -73,6 +73,27 @@ body {
   -webkit-mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent);
           mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent);
 }
+
+/* v10: upcoming-event ticks. Same box and fade mask as the rail, so they
+ * dissolve into its bottom fade. Positioned/faded per scroll in app.js. */
+.ticks {
+  position: fixed; z-index: 6; pointer-events: none;
+  left: 0; width: var(--gutter);
+  top: calc(var(--safe-top) + var(--bar-h) + 4px);
+  bottom: calc(var(--map-h) + 6px);
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent);
+          mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent);
+}
+.tick {
+  position: absolute; top: 0;
+  left: calc(var(--rail-x) - 10px);
+  width: 20px; height: 5px;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+.tick svg { display: block; overflow: visible; }
+.tick path { fill: none; stroke: #8a8a8a; stroke-width: 2.4px; stroke-linecap: round; }
 
 /* Dots live outside the rail so the fade mask doesn't hide them */
 .dots {
@@ -315,11 +336,99 @@ body {
 
 .noscript { padding: 120px 24px; text-align: center; color: var(--muted); }
 
+/* ---------- v10: faint down arrow + scroll pulse ---------- */
+/* Wide, shallow chevron centered in the gap under the photo, just above the
+ * map (app.js sets `bottom` per card to center it in that gap). Visual only.
+ * Bobs ~5px over 2.4s. Not rendered on the last event. */
+.card { position: relative; }
+.card-arrow {
+  position: absolute; left: 50%; bottom: 9px;
+  width: 60px; height: 12px; margin-left: -30px;
+  pointer-events: none;
+  opacity: .3;
+  transition: opacity .25s ease;
+  animation: arrowBob 2.4s ease-in-out infinite;
+}
+.card-arrow svg { display: block; overflow: visible; }
+.card-arrow path { fill: none; stroke: var(--ink); stroke-width: 1.25px; stroke-linecap: round; stroke-linejoin: round; }
+@keyframes arrowBob {
+  0%, 100% { transform: translateY(-2px); }
+  50%      { transform: translateY(3px); }
+}
+/* while the SWIPE UP text pulses in the same gap, the arrow steps aside */
+body.is-hinting .card-arrow { opacity: 0; }
+
+/* Scroll pulse (like the map's zoom bump): the snapped card and the rail
+ * dots nudge up and ease back. Transform only, so snap/scrollTop stay put. */
+/* (Not on .card itself: moving a snap target makes the browser re-snap.) */
+.card.is-nudge > .block,
+.card.is-nudge > .card-arrow svg,
+.dots.is-nudge, .ticks.is-nudge { animation: scrollNudge 650ms cubic-bezier(.33, 0, .25, 1); }
+@keyframes scrollNudge {
+  0%   { transform: translateY(0); }
+  38%  { transform: translateY(-24px); }
+  100% { transform: translateY(0); }
+}
+
+/* ---------- v10: Add to Home Screen tip + little plus button ----------
+ * Ported from Who's On Duty (which took it from the Card Tracker site).
+ * Same structure and rules; restyled for this page: paper gray, mono,
+ * square corners, one red hairline on top. */
+#a2hs {
+  position: fixed; z-index: 30;
+  left: 12px; right: 12px; bottom: calc(12px + var(--safe-bottom));
+  max-width: 420px; margin: 0 auto;
+  background: #e6e6e6;
+  border: 1px solid #b4b4b4; border-top: 3px solid var(--red);
+  border-radius: 0;
+  padding: 16px 18px 12px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .14);
+  font-family: var(--mono); font-size: 13px; line-height: 1.45; letter-spacing: .01em;
+  color: var(--ink);
+  display: none;
+}
+#a2hs .a2hsHead { display: flex; align-items: center; gap: 12px; padding-right: 28px; }
+#a2hs .appicon { width: 60px; height: 60px; flex: none; border-radius: 13.4px; overflow: hidden; display: block; }
+#a2hs .a2hsHead b {
+  font-family: var(--sans); font-size: 16px; font-weight: 600; letter-spacing: -.01em;
+}
+#a2hs b { font-weight: 600; }
+#a2hs p { margin: 8px 0 10px; color: var(--muted); }
+#a2hs ol { list-style: none; margin: -2px 0 0; padding: 0; counter-reset: s; }
+#a2hs li { display: flex; align-items: center; gap: 10px; padding: 5px 0; color: var(--ink); counter-increment: s; }
+#a2hs li::before { content: counter(s); font-size: 11px; color: var(--muted); width: 10px; }
+#a2hs .ic {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: 0; background: #d2d2d2; flex: none;
+}
+#a2hs .ic path, #a2hs .ic rect { stroke: #3a3a3a; }
+#a2hs .x {
+  position: absolute; top: 2px; right: 6px;
+  background: none; border: 0; color: var(--ink);
+  font: 300 30px/1 var(--sans); padding: 6px 8px; margin: 0; cursor: pointer;
+}
+/* the plus button: tucked into the soft top-right corner of the map, clear
+ * of the header clock, the PINCH TO ZOOM caption (bottom-right) and the
+ * centered SWIPE UP hint */
+#help {
+  position: fixed; z-index: 7;
+  right: 10px; bottom: calc(var(--map-h) - 44px);
+  width: 34px; height: 34px; margin: 0; padding: 0;
+  background: rgba(210, 210, 210, .82);
+  color: #3a3a3a; border: 0; border-radius: 0; box-shadow: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+#help svg { display: block; width: 20px; height: 20px; }
+#help svg * { stroke: currentColor; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+
 @keyframes scrollHintFade {
   0%, 100% { opacity: 0; }
   28%, 70% { opacity: .8; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .card-arrow { animation: none; }
+  .card.is-nudge > .block, .card.is-nudge > .card-arrow svg, .dots.is-nudge, .ticks.is-nudge { animation: none; }
   .map.is-pulse .map-flash { animation: none; }
   .scroll-hint.is-pulse { animation: scrollHintFade 900ms ease-out; }
   /* Interior swap becomes a crossfade; the track does not slide. */

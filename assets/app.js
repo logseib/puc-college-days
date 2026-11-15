@@ -136,7 +136,9 @@
         '<div class="where"><span class="where-k">Location :</span> ' + esc(where) + (sub ? '<span class="note">' + esc(sub) + "</span>" : "") +
           (it.note ? '<span class="note">' + esc(it.note) + "</span>" : "") + "</div>" +
         photoHTML(p0, it.index) +
-      "</div>";
+      "</div>" +
+      // v10: faint down chevron below the photo (visual only); none on the last event
+      (it.index < items.length - 1 ? '<div class="card-arrow" aria-hidden="true"><svg viewBox="0 0 60 12" width="60" height="12"><path d="M1 1.5 L30 10.5 L59 1.5"/></svg></div>' : "");
     timeline.appendChild(card);
   });
   const cards = Array.from(timeline.children);
@@ -149,6 +151,39 @@
     dotsEl.appendChild(d);
     return d;
   });
+
+  /* v10: one small tick on the rail per event. Tick k sits DOT_TRAVEL × (k − scroll)
+   * below the landed title, so tick #1 is exactly where the incoming dot starts
+   * its parallax travel and every tick rides up with the dot as you scroll.
+   * The tick cross-fades into the dot (tick 1→0 while the dot goes 0→1); past
+   * ticks are gone. Mid gray at #1, ~25% lighter per step; the rail's own
+   * bottom fade (same mask) dissolves the rest. */
+  const TICK_MAX = 4.5, TICK_FALLOFF = 0.75;
+  const ticksEl = document.getElementById("ticks");
+  const ticks = ticksEl ? items.map((_, i) => {
+    const t = document.createElement("div");
+    t.className = "tick";
+    t.innerHTML = '<svg viewBox="0 0 20 5" width="20" height="5" aria-hidden="true"><path d="M1.2 1.4 Q10 4.2 18.8 1.4"/></svg>';
+    ticksEl.appendChild(t);
+    return t;
+  }) : [];
+  function syncTicks(raw) {
+    if (!ticks.length) return;
+    const land = titleLandingY();
+    const top = ticksEl.getBoundingClientRect().top;
+    ticks.forEach((t, k) => {
+      const sIdx = k - raw;                       // 1 = the incoming dot's start position
+      let o = 0;
+      if (sIdx > 0 && sIdx < TICK_MAX + 1) {
+        const fadeIn = Math.min(1, sIdx);         // cross-fade with the incoming dot
+        const fall = Math.pow(TICK_FALLOFF, Math.max(0, sIdx - 1));
+        const tail = Math.min(1, Math.max(0, TICK_MAX + 1 - sIdx));   // soft end of the list
+        o = fadeIn * fall * tail;
+      }
+      t.style.opacity = o.toFixed(3);
+      t.style.transform = "translateY(" + (land - top + DOT_TRAVEL * sIdx - 2.5).toFixed(2) + "px)";
+    });
+  }
 
   /* Landing Y of a snapped card's title (first-line center). Same for every card. */
   function titleLandingY() {
@@ -231,6 +266,7 @@
     let p = (i0 === i1) ? 0 : raw - i0;
     if (p < 1e-4) p = 0;
     if (p > 1 - 1e-4) p = 1;
+    syncTicks(i0 + p);
 
     dots.forEach((d) => {
       setDotCenter(d, land);
@@ -262,6 +298,7 @@
 
   function parkDot(i) {
     const land = titleLandingY();
+    syncTicks(i);
     dots.forEach((d, k) => {
       setDotCenter(d, land);
       d.style.transform = "translateY(0px)";
@@ -332,10 +369,43 @@
       hintEl.classList.remove("is-pulse");
       void hintEl.offsetWidth;
       hintEl.classList.add("is-pulse");
+      nudge();                                   // v10: scroll pulse fires with the text hint
       armHint({ keepPulse: true });
     };
     if (wait) hintTimer = setTimeout(show, wait);
     else show();
+  }
+
+  /* v10 scroll pulse: like the map's zoom bump, the snapped card (and its
+   * rail dot) nudges up ~24px and eases back over 650ms. Pure transform:
+   * scrollTop, snap and the dot parallax math are untouched. Skipped on the
+   * last event and with reduced motion. While it (and the SWIPE UP text)
+   * plays, the faint down arrow steps aside so the two don't stack. */
+  const NUDGE_MS = 650, NUDGE_FIRST = 1200;
+  let nudgeTimer = 0;
+  function nudge() {
+    if (reduceMotion || !canHint()) return;
+    const i = arrived >= 0 ? arrived : visibleIndex();
+    const card = cards[i]; if (!card) return;
+    [card, dotsEl, ticksEl].filter(Boolean).forEach(el => { el.classList.remove("is-nudge"); void el.offsetWidth; el.classList.add("is-nudge"); });
+    document.body.classList.add("is-hinting");
+    clearTimeout(nudgeTimer);
+    nudgeTimer = setTimeout(() => {
+      card.classList.remove("is-nudge"); dotsEl.classList.remove("is-nudge"); if (ticksEl) ticksEl.classList.remove("is-nudge");
+      document.body.classList.remove("is-hinting");
+    }, 950);   // the SWIPE UP text pulse is 900ms
+  }
+
+  /* Center each card's faint arrow in the gap between its photo (block) and
+   * the card's bottom edge, i.e. just above the map. Never closer than 9px
+   * to the map. */
+  function placeArrows() {
+    cards.forEach(card => {
+      const a = card.querySelector(".card-arrow"), b = card.querySelector(".block");
+      if (!a || !b) return;
+      const below = card.clientHeight - (b.offsetTop + b.offsetHeight) + parseFloat(getComputedStyle(b).paddingBottom || 0);
+      a.style.bottom = Math.max(9, Math.round((below - a.offsetHeight) / 2)) + "px";
+    });
   }
 
   timeline.addEventListener("scroll", () => {
@@ -598,9 +668,11 @@
     arrived = start;
     map.show(start, false);
     parkDot(start);
+    placeArrows();
     armSlide(start);
     armHint();
     setTimeout(() => { map.bump(); }, 450);   // first-load zoom hint only; no flash
+    setTimeout(nudge, NUDGE_FIRST);           // v10: first-load scroll pulse, after the map bump (450–1050ms)
   });
 
   setInterval(tickClock, 1000);
@@ -614,8 +686,9 @@
     const i = visibleIndex();
     scrollToIndex(i, false);
     parkDot(arrived >= 0 ? arrived : i);
+    placeArrows();
     armHint();
   });
 
-  window.PUC_DEBUG = { now, items, currentIndex, scrollToIndex, map, titleLandingY, titleCenterY, cardH, syncDots, parkDot, armSlide, resetTracks, armHint, fireHint, clearHint, DOT_TRAVEL, HINT_IDLE, dots, timeline, SLIDE_DWELL };
+  window.PUC_DEBUG = { now, items, currentIndex, scrollToIndex, map, titleLandingY, titleCenterY, cardH, syncDots, parkDot, armSlide, resetTracks, armHint, fireHint, clearHint, DOT_TRAVEL, HINT_IDLE, dots, timeline, SLIDE_DWELL, nudge, placeArrows, syncTicks, ticks };
 })();
