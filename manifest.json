@@ -1,7 +1,7 @@
 {
-  "name": "PUC College Days · TAA",
-  "short_name": "College Days",
-  "description": "Live schedule for TAA students at PUC College Days, Sunday Nov 15, 2026.",
+  "name": "Attendancemaxing",
+  "short_name": "Attendancemaxing",
+  "description": "PUC College Days · Sunday, November 15. Live schedule for TAA students.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -10,17 +10,17 @@
   "theme_color": "#d2d2d2",
   "icons": [
     {
-      "src": "assets/icons/icon-192.png",
+      "src": "assets/icons/icon-192.png?v=11",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "assets/icons/icon-512.png",
+      "src": "assets/icons/icon-512.png?v=11",
       "sizes": "512x512",
       "type": "image/png"
     },
     {
-      "src": "assets/icons/icon-512-maskable.png",
+      "src": "assets/icons/icon-512-maskable.png?v=11",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
