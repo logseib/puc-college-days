@@ -6,6 +6,8 @@
 
 **v5 (Nov 15, 2026):** dorm tags are baked into the map image (`assets/img/puc-campus-map-v5.webp`) so they scale with pinch-zoom like the buildings. "Grainger (girls)" is a solid orange (#f07a1a) rectangle on #39; "Graf (boys)" is a solid blue (#2f6fe0) rectangle on #44; white sans text, square corners. The untagged original map is kept as `assets/img/puc-campus-map.webp`. The old HTML text-label overlays are gone. Backups: `old/v2-labels/`, `old/v3/`, `old/v4/`.
 
+**v6 (Nov 15, 2026):** header is only the date ("Sunday, November 15") and a live HH:MMAM clock. Each card's title is one line, "9:00AM : Event name" (time in the previous title weight, name lighter). Photos crop to 3:2 at the same width. The map is ~47% of the viewport and stays pinned, as a dreamy edgeless window (all sides dissolve into #d2d2d2, with a taller top fade and a backdrop-blur seam so scrolling cards melt into the map with no hard line). After a swipe settles it does the existing zoom bump plus a brief, very subtle flash. The incoming rail dot fades in from 70px below its landing and glides up to the new title; the outgoing dot rides its title out. Check-in + Breakfast shows the Fireside Room photo (that's where the hour is spent); the map still circles both the church and Fireside. Backups: `old/v2-labels/`, `old/v3/`, `old/v4/`, `old/v5/`.
+
 The notes below describe v1 and are kept for reference.
 
 ---
