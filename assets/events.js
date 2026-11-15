@@ -21,21 +21,19 @@
  *             shown but never chosen as the student's "current" event
  * ===================================================================== */
 
-/* Illustrated campus map (assets/img/puc-campus-map.webp, 3145 x 2046 px,
- * rasterized at 400 dpi from PUC's official PDF campus map, page 1).
+/* Illustrated campus map (assets/img/puc-campus-map-v5.webp, 3145 x 2046 px,
+ * rasterized at 400 dpi from PUC's official PDF campus map, page 1, with
+ * dorm tags baked into the image so they scale with pinch-zoom:
+ *   "Grainger (girls)" orange #f07a1a on #39, "Graf (boys)" blue #2f6fe0 on #44.
+ * Spelling / gender = TAA's room assignment for this trip (PUC's legend lists
+ * Grainger as men's, Graf as women's). The untagged original is kept as
+ * assets/img/puc-campus-map.webp.
  * mapX / mapY / mapR = circle center + radius in that image's pixels,
  * read off the numbered labels on the illustration:
  *   #14 Church & Sanctuary, #18 Church Complex (Fireside Room, Scales Chapel).
  * Note: the illustration is rotated — north points LEFT, east points UP. */
 window.PUC_MAP = {
-  src: "assets/img/puc-campus-map.webp", w: 3145, h: 2046,
-  // Permanent reference labels (dorms), shown on every map. x/y = dot on the building in map pixels; side = label above/below.
-  // Spelling per the PDF legend + puc.edu: #39 "Grainger Hall", #44 "Graf Hall".
-  // Girls/boys = TAA's room assignment for this trip (PUC's legend lists Grainger as men's, Graf as women's).
-  labels: [
-    { text: "Grainger (girls)", x: 1300, y: 812, side: "below" },   // #39 Grainger Hall (dot on its front facade)
-    { text: "Graf (boys)",      x: 2085, y: 748, side: "below" }    // #44 Graf Hall
-  ]
+  src: "assets/img/puc-campus-map-v5.webp", w: 3145, h: 2046
 };
 
 window.PUC_PLACES = {

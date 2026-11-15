@@ -12,7 +12,8 @@
  *  Rail:   a fixed hairline in the left margin; each card carries its own
  *             bullet dot beside the title (red when live) that rides with the card
  *             and fades in as the card lands.
- *  4. Map:    ONE fixed map in the bottom third (PUC's illustrated PDF map).
+ *  4. Map:    ONE fixed map in the bottom third (PUC's illustrated PDF map,
+ *             with Grainger/Graf tags baked into the image so they scale with pinch).
  *             When the active event changes it glides (~500 ms) to that event's
  *             place and cross-fades to its red circle(s). Pinch to zoom, one
  *             finger pans, double-tap resets; a small zoom "bump" after each settle.
@@ -175,7 +176,6 @@
   /* ---------------- 4. Map: one fixed map, glides between events ---------------- */
   function setupMap(el) {
     const stage = el.querySelector(".map-stage");
-    const blur = el.querySelector(".map-blur");
     const cap = el.querySelector(".map-cap");
     stage.style.width = MAP.w + "px";
     stage.style.height = MAP.h + "px";
@@ -190,15 +190,6 @@
       pinFor[p.name] = { p, d };
     }));
     const pins = Object.values(pinFor);
-    // dorm reference labels (constant screen size, glued to their buildings)
-    const labels = (MAP.labels || []).map(l => {
-      const d = document.createElement("div");
-      d.className = "map-label" + (l.side === "below" ? " is-below" : "");
-      d.innerHTML = '<span class="map-label-text">' + esc(l.text) + "</span>";
-      el.insertBefore(d, blur);
-      return { l, d };
-    });
-
     const v = { s: 1, x: 0, y: 0 };
     const MAX = 1.2;
     let active = -1;
@@ -213,9 +204,6 @@
     function apply() {
       clamp();
       stage.style.transform = "translate(" + v.x + "px," + v.y + "px) scale(" + v.s + ")";
-      labels.forEach(({ l, d }) => {
-        d.style.transform = "translate(" + (v.x + l.x * v.s).toFixed(1) + "px," + (v.y + l.y * v.s).toFixed(1) + "px)";
-      });
       pins.forEach(({ p, d }) => {
         const r = Math.max(9, p.mapR * v.s);
         d.style.left = (v.x + p.mapX * v.s) + "px";
