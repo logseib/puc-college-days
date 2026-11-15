@@ -2,6 +2,8 @@
 
 **v2 (Nov 14, 2026):** Sunday Nov 15 only, first three events (Check-in + Breakfast, Worship, Welcome). Light gray, minimal; date + time range are a fixed header that cross-fades between events; thin progress rail on the left; tiny HH:MM clock. Map = PUC's illustrated PDF campus map (`assets/img/puc-campus-map.webp`), multiply-blended, blurred/feathered rim, pinch to zoom (after a pinch, one finger pans; double-tap resets), red circle per place (pixel coords `mapX/mapY/mapR` in `assets/events.js`; the illustration is rotated: north = left). No Leaflet/OSM, no rounded corners. The previous version is kept untouched in `old/` (open `old/index.html`).
 
+**v4 (Nov 15, 2026):** one fixed map in the bottom third (glides ~500 ms to each event, circles cross-fade, rim ~35% wider); snap cards sized to the space above it; left rail = fixed fading hairline + a per-card bullet dot at the title (red when live) that fades in as the card lands. Backups: `old/v2-labels/`, `old/v3/`.
+
 The notes below describe v1 and are kept for reference.
 
 ---

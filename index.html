@@ -28,11 +28,18 @@
     <div class="clock" id="clock" aria-label="Current time, Pacific">--:--</div>
   </header>
 
-  <!-- Left progress rail: one tick per event -->
-  <nav id="rail" class="rail" aria-label="Events"></nav>
+  <!-- Left rail: a fixed hairline; each event card carries its own bullet dot -->
+  <div class="rail" aria-hidden="true"></div>
 
   <!-- The timeline: one full-screen, snap-scrolling card per event (built by app.js) -->
   <main id="timeline" class="timeline" aria-label="Sunday schedule"></main>
+
+  <!-- One fixed map for the whole page: bottom third of the screen -->
+  <div id="map" class="map" aria-label="Campus map">
+    <div class="map-stage"><img alt="" draggable="false" src="assets/img/puc-campus-map.webp"></div>
+    <div class="map-blur"></div><div class="map-fade"></div>
+    <div class="map-cap">pinch to zoom</div>
+  </div>
 
   <noscript><p class="noscript">This schedule needs JavaScript turned on.</p></noscript>
 
