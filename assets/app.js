@@ -21,11 +21,13 @@
  *             people see what's coming without scrolling. A compact
  *             "RIGHT NOW" tag still sits on the title line of the
  *             live event; the rail dot is red. Those are not moved to
- *             the upcoming card. From 10 minutes before the next start,
- *             that upcoming card also gets a blue "UP NEXT (m:ss)"
- *             badge (same shape as RIGHT NOW) with a live countdown;
- *             at 0 the badge is removed and RIGHT NOW takes over on
- *             that card, no reload needed. The map frames the card
+ *             the upcoming card. The next upcoming event always has a
+ *             blue "UP NEXT (...)" badge (same shape as RIGHT NOW) with
+ *             a live countdown: H:MM when an hour or more away, M:SS
+ *             under one hour. At 0 the badge is removed, RIGHT NOW
+ *             takes over on that card, and UP NEXT moves to the
+ *             following event, no reload needed. After the last event
+ *             starts there is no UP NEXT. The map frames the card
  *             that is shown.
  *  Rail:   a fixed fading hairline in the left margin. Dots are fixed
  *             on that rail and driven by scroll position (no time-based
@@ -159,10 +161,10 @@
     card.innerHTML =
       '<div class="block">' +
         '<h2 class="title">' +
-          '<span class="lead"><span class="when">' + esc(fmtStart(it.start)) + '</span><span class="sep"> :&nbsp;</span></span>' +
-          '<span class="name">' + esc(it.title) + "</span>" +
           '<span class="now-tag" aria-hidden="true">Right now</span>' +
           '<span class="next-tag" aria-hidden="true">Up next</span>' +
+          '<span class="lead"><span class="when">' + esc(fmtStart(it.start)) + '</span><span class="sep"> :&nbsp;</span></span>' +
+          '<span class="name">' + esc(it.title) + "</span>" +
         "</h2>" +
         '<div class="where"><span class="where-k">Location :</span> ' + esc(where) + (sub ? '<span class="note">' + esc(sub) + "</span>" : "") +
           (it.note ? '<span class="note">' + esc(it.note) + "</span>" : "") + "</div>" +
@@ -212,15 +214,20 @@
     const day = fmtDay(it.start);
     if (day !== shownDay) { barDate.textContent = day; shownDay = day; }
   }
+  /* >= 1 hour: H:MM (hours:minutes, minutes padded). Under 1 hour: M:SS
+   * (live seconds, minutes unpadded). No spaces around the colon. */
   function fmtCountdown(ms) {
-    const sec = Math.max(0, Math.ceil(ms / 1000));
+    const remain = Math.max(0, ms);
+    if (remain >= 60 * MIN) {
+      const totalMin = Math.floor(remain / MIN);
+      return Math.floor(totalMin / 60) + ":" + String(totalMin % 60).padStart(2, "0");
+    }
+    const sec = Math.min(59 * 60 + 59, Math.ceil(remain / 1000));
     return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0");
   }
-  /** Index of the next event if it starts within 10 minutes and has not started yet; else -1. */
+  /** Index of the next upcoming event (start > t); -1 after the last event starts. */
   function upNextIndex(t) {
-    const next = items.findIndex(it => it.start > t);
-    if (next >= 0 && t >= items[next].start - EARLY_MS) return next;
-    return -1;
+    return items.findIndex(it => it.start > t);
   }
   function updateRail() {
     const t = now();
@@ -244,7 +251,7 @@
   /* ---------------- Clock ---------------- */
   function tickClock() {
     clock.innerHTML = fmtStart(now()) + (demo ? " <em>demo</em>" : "");
-    updateRail();   // v17: live UP NEXT countdown, and flip to RIGHT NOW at 0
+    updateRail();   // live UP NEXT countdown; flips to RIGHT NOW at 0 and advances UP NEXT
   }
 
   /* ---------------- Scrolling + rail dots ---------------- */
@@ -738,5 +745,5 @@
     armHint();
   });
 
-  window.PUC_DEBUG = { now, items, currentIndex, focusIndex, upNextIndex, scrollToIndex, map, titleLandingY, titleCenterY, cardH, syncDots, parkDot, armSlide, resetTracks, armHint, fireHint, clearHint, DOT_TRAVEL, HINT_IDLE, dots, timeline, SLIDE_DWELL, nudge, toggleFull, canHint };
+  window.PUC_DEBUG = { now, items, currentIndex, focusIndex, upNextIndex, fmtCountdown, scrollToIndex, map, titleLandingY, titleCenterY, cardH, syncDots, parkDot, armSlide, resetTracks, armHint, fireHint, clearHint, DOT_TRAVEL, HINT_IDLE, dots, timeline, SLIDE_DWELL, nudge, toggleFull, canHint };
 })();

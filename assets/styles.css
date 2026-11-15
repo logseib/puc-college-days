@@ -1,5 +1,5 @@
 /* =====================================================================
- * PUC College Days — styles (v17 : blue UP NEXT countdown badge, same shape as RIGHT NOW)
+ * PUC College Days — styles (v18 : UP NEXT always on the next event; H:MM / M:SS countdown)
  * Light gray paper, dark ink. Sticky header is only the date + clock.
  * Event time + title share one line next to the rail bullet. Photos
  * are 3:2. One fixed map in the bottom half of the screen, with the
@@ -124,29 +124,28 @@ body {
 }
 
 /* One line: "10:00AM : Worship" — time in the title weight, name lighter.
- * If the name is long it wraps into the column beside the time.
- * A compact "RIGHT NOW" tag sits at the end of the first line when live.
- * An "UP NEXT (m:ss)" tag, same shape in blue, sits there on the upcoming
- * card from 10 minutes before its start until the countdown hits 0. */
+ * The compact "RIGHT NOW" / "UP NEXT (...)" badge is floated to the
+ * end of the first line (same shape; red / blue). A long name wraps
+ * under the badge at full width so the badge never crowds the title,
+ * including on 320px screens. */
 .title {
   margin: 0;
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: baseline;
-  column-gap: 0;
+  display: block;
+  min-width: 0;
   font-size: 22px; font-weight: 600; line-height: 1.2; letter-spacing: -.015em;
   flex: 0 0 auto;
 }
-.title .lead { white-space: nowrap; }
+.title::after { content: ""; display: table; clear: both; }
+.title .lead { float: left; white-space: nowrap; }
 .title .when, .title .sep { font-weight: 600; }
-.title .name { font-weight: 300; min-width: 0; }
+.title .name { font-weight: 300; }
 .now-tag,
 .next-tag {
   display: none;
-  grid-column: 3;
-  grid-row: 1;
-  align-self: center;
+  float: right;
   margin-left: 8px;
+  /* optically center on the first 22px/1.2 line: (1.2em - badge height) / 2 */
+  margin-top: calc((1.2em - 9px - 5px) / 2);
   color: #fff;
   font-family: var(--mono);
   font-size: 9px; font-weight: 600; line-height: 1;
