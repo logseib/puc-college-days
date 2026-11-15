@@ -16,8 +16,17 @@
  *             on the settled card, then keep alternating; swipe away
  *             resets to the exterior. prefers-reduced-motion crossfades.
  *  3. Now:    on load, jumps to the live event (before the first: first;
- *             after the last: last). A compact "RIGHT NOW" tag sits on the title line of the
- *             live event; the rail dot is red. Both refresh each minute.
+ *             after the last: last). From 10 minutes before the next
+ *             event starts, the landing card is that next event so
+ *             people see what's coming without scrolling. A compact
+ *             "RIGHT NOW" tag still sits on the title line of the
+ *             live event; the rail dot is red. Those are not moved to
+ *             the upcoming card. From 10 minutes before the next start,
+ *             that upcoming card also gets a blue "UP NEXT (m:ss)"
+ *             badge (same shape as RIGHT NOW) with a live countdown;
+ *             at 0 the badge is removed and RIGHT NOW takes over on
+ *             that card, no reload needed. The map frames the card
+ *             that is shown.
  *  Rail:   a fixed fading hairline in the left margin. Dots are fixed
  *             on that rail and driven by scroll position (no time-based
  *             animation). Each bullet travels only ~70px along the line
@@ -99,13 +108,26 @@
     return Object.assign({}, e, { index: i, start, end, places, photo });
   });
 
-  /** Live event with the latest start; else next upcoming; else the last. */
+  /** Live event with the latest start; else next upcoming; else the last.
+   *  Used for the "RIGHT NOW" tag and the red rail dot, which always
+   *  mark the event that is actually happening. */
   function currentIndex(t) {
     let live = -1;
     items.forEach((it, i) => { if (it.start <= t && t < it.end && (live < 0 || it.start >= items[live].start)) live = i; });
     if (live >= 0) return live;
     const next = items.findIndex(it => it.start > t);
     return next >= 0 ? next : items.length - 1;
+  }
+
+  /* Card to open on (and to frame on the map). Same as currentIndex,
+   * except that from 10 minutes before the next event's start the
+   * next event is shown instead. Does not change currentIndex, so
+   * "RIGHT NOW" and the red dot stay on the live event. */
+  const EARLY_MS = 10 * MIN;
+  function focusIndex(t) {
+    const next = items.findIndex(it => it.start > t);
+    if (next >= 0 && t >= items[next].start - EARLY_MS) return next;
+    return currentIndex(t);
   }
 
   /* ---------------- 3. Render ---------------- */
@@ -140,6 +162,7 @@
           '<span class="lead"><span class="when">' + esc(fmtStart(it.start)) + '</span><span class="sep"> :&nbsp;</span></span>' +
           '<span class="name">' + esc(it.title) + "</span>" +
           '<span class="now-tag" aria-hidden="true">Right now</span>' +
+          '<span class="next-tag" aria-hidden="true">Up next</span>' +
         "</h2>" +
         '<div class="where"><span class="where-k">Location :</span> ' + esc(where) + (sub ? '<span class="note">' + esc(sub) + "</span>" : "") +
           (it.note ? '<span class="note">' + esc(it.note) + "</span>" : "") + "</div>" +
@@ -189,20 +212,39 @@
     const day = fmtDay(it.start);
     if (day !== shownDay) { barDate.textContent = day; shownDay = day; }
   }
+  function fmtCountdown(ms) {
+    const sec = Math.max(0, Math.ceil(ms / 1000));
+    return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0");
+  }
+  /** Index of the next event if it starts within 10 minutes and has not started yet; else -1. */
+  function upNextIndex(t) {
+    const next = items.findIndex(it => it.start > t);
+    if (next >= 0 && t >= items[next].start - EARLY_MS) return next;
+    return -1;
+  }
   function updateRail() {
     const t = now();
+    const soon = upNextIndex(t);
     cards.forEach((c, i) => {
       const isLive = t >= items[i].start && t < items[i].end;
       c.classList.toggle("is-current", isLive);
       const tag = c.querySelector(".now-tag");
       if (tag) tag.setAttribute("aria-hidden", isLive ? "false" : "true");
       dots[i].classList.toggle("is-live", isLive);
+      const isUpNext = i === soon;
+      c.classList.toggle("is-up-next", isUpNext);
+      const nextTag = c.querySelector(".next-tag");
+      if (nextTag) {
+        if (isUpNext) nextTag.textContent = "UP NEXT (" + fmtCountdown(items[i].start - t) + ")";
+        nextTag.setAttribute("aria-hidden", isUpNext ? "false" : "true");
+      }
     });
   }
 
   /* ---------------- Clock ---------------- */
   function tickClock() {
     clock.innerHTML = fmtStart(now()) + (demo ? " <em>demo</em>" : "");
+    updateRail();   // v17: live UP NEXT countdown, and flip to RIGHT NOW at 0
   }
 
   /* ---------------- Scrolling + rail dots ---------------- */
@@ -661,7 +703,10 @@
   function refresh() { showHeader(visibleIndex()); updateRail(); }
 
   /* ---------------- Boot ---------------- */
-  const start = currentIndex(now());
+  /* There is no later auto-return to "now": the minute loop and
+   * visibilitychange only refresh the clock, RIGHT NOW tags, and
+   * red dots (refresh()). Resize re-snaps the already-visible card. */
+  const start = focusIndex(now());
   scrollToIndex(start, false);
   showHeader(start);
   updateRail();
@@ -693,5 +738,5 @@
     armHint();
   });
 
-  window.PUC_DEBUG = { now, items, currentIndex, scrollToIndex, map, titleLandingY, titleCenterY, cardH, syncDots, parkDot, armSlide, resetTracks, armHint, fireHint, clearHint, DOT_TRAVEL, HINT_IDLE, dots, timeline, SLIDE_DWELL, nudge, toggleFull, canHint };
+  window.PUC_DEBUG = { now, items, currentIndex, focusIndex, upNextIndex, scrollToIndex, map, titleLandingY, titleCenterY, cardH, syncDots, parkDot, armSlide, resetTracks, armHint, fireHint, clearHint, DOT_TRAVEL, HINT_IDLE, dots, timeline, SLIDE_DWELL, nudge, toggleFull, canHint };
 })();

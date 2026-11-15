@@ -1,5 +1,5 @@
 /* =====================================================================
- * PUC College Days — styles (v16 : full-screen toggle at map bottom-right; plus in the header)
+ * PUC College Days — styles (v17 : blue UP NEXT countdown badge, same shape as RIGHT NOW)
  * Light gray paper, dark ink. Sticky header is only the date + clock.
  * Event time + title share one line next to the rail bullet. Photos
  * are 3:2. One fixed map in the bottom half of the screen, with the
@@ -13,6 +13,7 @@
   --muted: #5f5f5f;
   --faint: #a6a6a6;
   --red: #e1251b;
+  --blue: #1b5ee1;          /* same saturation/lightness as --red, hue 217 */
   --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --safe-top: env(safe-area-inset-top, 0px);
@@ -124,7 +125,9 @@ body {
 
 /* One line: "10:00AM : Worship" — time in the title weight, name lighter.
  * If the name is long it wraps into the column beside the time.
- * A compact "RIGHT NOW" tag sits at the end of the first line when live. */
+ * A compact "RIGHT NOW" tag sits at the end of the first line when live.
+ * An "UP NEXT (m:ss)" tag, same shape in blue, sits there on the upcoming
+ * card from 10 minutes before its start until the countdown hits 0. */
 .title {
   margin: 0;
   display: grid;
@@ -137,13 +140,13 @@ body {
 .title .lead { white-space: nowrap; }
 .title .when, .title .sep { font-weight: 600; }
 .title .name { font-weight: 300; min-width: 0; }
-.now-tag {
+.now-tag,
+.next-tag {
   display: none;
   grid-column: 3;
   grid-row: 1;
   align-self: center;
   margin-left: 8px;
-  background: var(--red);
   color: #fff;
   font-family: var(--mono);
   font-size: 9px; font-weight: 600; line-height: 1;
@@ -153,7 +156,10 @@ body {
   white-space: nowrap;
   pointer-events: none;
 }
+.now-tag { background: var(--red); }
+.next-tag { background: var(--blue); }
 .card.is-current .now-tag { display: inline-block; }
+.card.is-up-next .next-tag { display: inline-block; }
 
 .where {
   flex: 0 0 auto;
