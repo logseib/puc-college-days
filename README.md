@@ -10,7 +10,10 @@
 
 **v7 (Nov 15, 2026):** map edge treatment returns to v5's feathered rim (multiply blend, 5px backdrop-filter blur, inset paper fade), with only the top fade made ~1.5× taller (~57px vs v5's ~38px). The v6 dreamy all-edge vignette, backdrop-blur seam, and map-paper layer are gone. Cards are once again sized to the space above the map, so they don't tuck under it. Rail dots use a scroll-linked parallax: each bullet travels only ~70px along the line while the card travels a full screen, with opacity going 0→1 as the incoming dot rises from 70px below the title, and 1→0 as the outgoing dot moves up ~70px. Visible labels use a space on both sides of a colon (`Location : PUC Church`, `10:00AM : Worship`), except inside clock times (`10:00`). Backups: `old/v2-labels/`, `old/v3/`, `old/v4/`, `old/v5/`, `old/v6/`.
 
+**v8 (Nov 15, 2026):** full Sunday schedule (11 events). The 9:00 AM card is Breakfast with the Pastors at the Fireside Room only (no check-in, map circles #18 only). New map coords: Dining Commons #26, Pacific Auditorium / gym #20, Grainger #39, Graf #44. Off-campus St. Helena and unsited Free Time show the full campus with no red circle. The live event no longer has a red outline or a "CURRENT EVENT" tab; a compact square "RIGHT NOW" tag sits at the end of the title's first line, and the rail dot stays red. Location text is 15px (2px larger than v7). Church exteriors crop to `object-position: center 85%` so the lawn sign stays in the 3:2 frame. Church cards slide to Logan's sanctuary interior after a 5s dwell (alternating, 600ms ease; reduced-motion crossfades). After 10s idle a "SWIPE UP" hint (same type as "PINCH TO ZOOM") pulses just above the map; any interaction resets the timer; it is hidden on the last event and delayed slightly so it doesn't overlap a photo slide. Backups: `old/v2-labels/` through `old/v7/`.
+
 The notes below describe v1 and are kept for reference.
+
 
 ---
 

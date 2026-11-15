@@ -33,6 +33,9 @@
        The scroller ends above the map, so cards never tuck underneath it. -->
   <main id="timeline" class="timeline" aria-label="Sunday schedule"></main>
 
+  <!-- Idle scroll hint: same type as "pinch to zoom"; pulses after 10s still. Hidden on the last event. -->
+  <div class="scroll-hint" id="scroll-hint" aria-hidden="true"><span class="scroll-hint-arrow" aria-hidden="true"></span>swipe up</div>
+
   <!-- One fixed map for the whole page: almost the bottom half of the screen.
        Edge treatment is the v5 feathered rim, with a slightly taller fade at the top. -->
   <div id="map" class="map" aria-label="Campus map">
