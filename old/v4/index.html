@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>PUC College Days · TAA</title>
+  <meta name="description" content="Live schedule for Thunderbird Adventist Academy students at PUC College Days, Sunday Nov 15, 2026.">
+  <meta name="theme-color" content="#d2d2d2">
+
+  <!-- "Add to Home Screen" support -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="College Days">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="assets/icons/icon-192.png">
+  <link rel="manifest" href="manifest.json">
+  <link rel="preload" as="image" href="assets/img/puc-campus-map.webp">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <!-- Sticky header: date + time range cross-fade between events; tiny live clock on the right -->
+  <header class="bar">
+    <div class="bar-swap" id="bar-swap" aria-live="polite">
+      <div class="bar-layer is-on"><div class="bar-date"></div><div class="bar-time"></div></div>
+      <div class="bar-layer"><div class="bar-date"></div><div class="bar-time"></div></div>
+    </div>
+    <div class="clock" id="clock" aria-label="Current time, Pacific">--:--</div>
+  </header>
+
+  <!-- Left rail: a fixed hairline; each event card carries its own bullet dot -->
+  <div class="rail" aria-hidden="true"></div>
+
+  <!-- The timeline: one full-screen, snap-scrolling card per event (built by app.js) -->
+  <main id="timeline" class="timeline" aria-label="Sunday schedule"></main>
+
+  <!-- One fixed map for the whole page: bottom third of the screen -->
+  <div id="map" class="map" aria-label="Campus map">
+    <div class="map-stage"><img alt="" draggable="false" src="assets/img/puc-campus-map.webp"></div>
+    <div class="map-blur"></div><div class="map-fade"></div>
+    <div class="map-cap">pinch to zoom</div>
+  </div>
+
+  <noscript><p class="noscript">This schedule needs JavaScript turned on.</p></noscript>
+
+  <script src="assets/events.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>
