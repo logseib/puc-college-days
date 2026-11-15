@@ -8,6 +8,8 @@
 
 **v6 (Nov 15, 2026):** header is only the date ("Sunday, November 15") and a live HH:MMAM clock. Each card's title is one line, "9:00AM : Event name" (time in the previous title weight, name lighter). Photos crop to 3:2 at the same width. The map is ~47% of the viewport and stays pinned, as a dreamy edgeless window (all sides dissolve into #d2d2d2, with a taller top fade and a backdrop-blur seam so scrolling cards melt into the map with no hard line). After a swipe settles it does the existing zoom bump plus a brief, very subtle flash. The incoming rail dot fades in from 70px below its landing and glides up to the new title; the outgoing dot rides its title out. Check-in + Breakfast shows the Fireside Room photo (that's where the hour is spent); the map still circles both the church and Fireside. Backups: `old/v2-labels/`, `old/v3/`, `old/v4/`, `old/v5/`.
 
+**v7 (Nov 15, 2026):** map edge treatment returns to v5's feathered rim (multiply blend, 5px backdrop-filter blur, inset paper fade), with only the top fade made ~1.5× taller (~57px vs v5's ~38px). The v6 dreamy all-edge vignette, backdrop-blur seam, and map-paper layer are gone. Cards are once again sized to the space above the map, so they don't tuck under it. Rail dots use a scroll-linked parallax: each bullet travels only ~70px along the line while the card travels a full screen, with opacity going 0→1 as the incoming dot rises from 70px below the title, and 1→0 as the outgoing dot moves up ~70px. Visible labels use a space on both sides of a colon (`Location : PUC Church`, `10:00AM : Worship`), except inside clock times (`10:00`). Backups: `old/v2-labels/`, `old/v3/`, `old/v4/`, `old/v5/`, `old/v6/`.
+
 The notes below describe v1 and are kept for reference.
 
 ---

@@ -29,26 +29,17 @@
   <div class="rail" aria-hidden="true"></div>
   <div class="dots" id="dots" aria-hidden="true"></div>
 
-  <!-- The timeline: one snap-scrolling card per event (built by app.js) -->
+  <!-- The timeline: one snap-scrolling card per event (built by app.js).
+       The scroller ends above the map, so cards never tuck underneath it. -->
   <main id="timeline" class="timeline" aria-label="Sunday schedule"></main>
 
-  <!-- Dreamy seam: content passing into the map is blurred and faded so there is no hard edge.
-       Mask is on the wrappers (not the same node as backdrop-filter) so iOS Safari still blurs. -->
-  <div class="seam" aria-hidden="true">
-    <div class="seam-blur-wrap seam-blur-wrap--soft"><div class="seam-blur"></div></div>
-    <div class="seam-blur-wrap seam-blur-wrap--strong"><div class="seam-blur"></div></div>
-    <div class="seam-fade"></div>
-  </div>
-
-  <!-- Opaque paper behind the map so the next card can't show through the
-       multiply-blended illustration. Fades out at the top so incoming cards
-       can melt into the seam. -->
-  <div class="map-paper" aria-hidden="true"></div>
-
-  <!-- One fixed map for the whole page: almost the bottom half of the screen -->
+  <!-- One fixed map for the whole page: almost the bottom half of the screen.
+       Edge treatment is the v5 feathered rim, with a slightly taller fade at the top. -->
   <div id="map" class="map" aria-label="Campus map">
     <div class="map-stage"><img alt="" draggable="false" src="assets/img/puc-campus-map-v5.webp"></div>
-    <div class="map-blur"></div><div class="map-fade"></div>
+    <div class="map-blur"></div>
+    <div class="map-blur-top"></div>
+    <div class="map-fade"></div>
     <div class="map-flash" aria-hidden="true"></div>
     <div class="map-cap">pinch to zoom</div>
   </div>
