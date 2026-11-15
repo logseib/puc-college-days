@@ -1,17 +1,17 @@
 /* =====================================================================
- * PUC College Days — app logic (no build step, no framework)
+ * PUC College Days — app logic (v2, no build step, no framework)
  *
- *  1. Time:   everything runs on PACIFIC wall-clock time. "Wall time" is
- *             stored as a number of ms where Date.UTC(y,m,d,h,min) == that
+ *  1. Time:   PACIFIC wall-clock time. "Wall ms" = Date.UTC(...) of the
  *             Pacific clock reading, so plain number comparisons work.
- *             Demo override: ?now=2026-11-15T13:30 (Pacific); the clock
- *             keeps ticking forward from there.
- *  2. Render: one full-screen card per event (+ an intro card), built from
- *             window.PUC_EVENTS / window.PUC_PLACES (assets/events.js).
- *  3. Status: NOW / Up next / starts in N min / Done, refreshed each minute.
- *  4. Maps:   Leaflet + OSM tiles, created lazily when a card nears view,
- *             with all interaction disabled so it never fights the swipe.
- *             Tapping the map opens Apple Maps at that spot.
+ *             Demo override: ?now=2026-11-15T10:15 (keeps ticking).
+ *  2. Render: one full-screen snap card per event (title, place, photo,
+ *             illustrated campus map). Date + time live in a fixed header
+ *             that cross-fades when you land on another event.
+ *  3. Now:    on load, jumps to the live event (before the first: first;
+ *             after the last: last). Header status + rail refresh each minute.
+ *  4. Map:    PUC's illustrated PDF map (rasterized), red circle(s) on the
+ *             place. Pinch to zoom; once zoomed, one finger pans; double-tap
+ *             resets. Until you pinch, one finger still swipes the page.
  * ===================================================================== */
 (function () {
   "use strict";
@@ -19,289 +19,295 @@
   const TZ = "America/Los_Angeles";
   const EVENTS = window.PUC_EVENTS || [];
   const PLACES = window.PUC_PLACES || {};
+  const MAP = window.PUC_MAP || { src: "", w: 1, h: 1 };
   const IMG_DIR = "assets/img/";
   const MIN = 60 * 1000;
 
-  /* ------------------------------------------------------------------ */
-  /* 1. Time helpers                                                     */
-  /* ------------------------------------------------------------------ */
-
+  /* ---------------- 1. Time ---------------- */
   const partsFmt = new Intl.DateTimeFormat("en-US", {
     timeZone: TZ, hourCycle: "h23",
     year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", second: "2-digit"
   });
-
-  /** Real current Pacific wall time, in "wall ms". */
   function realPacificWall() {
     const p = {};
     partsFmt.formatToParts(new Date()).forEach(x => { p[x.type] = x.value; });
     return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second);
   }
-
-  /** "2026-11-15T13:30" -> wall ms (interpreted as Pacific clock time). */
   function parseWall(s) {
     const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(String(s).trim());
     if (!m) return NaN;
     return Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0));
   }
-
-  // Demo override: shift "now" by a fixed offset so the clock still ticks.
   const params = new URLSearchParams(location.search);
   const override = params.has("now") ? parseWall(params.get("now")) : NaN;
-  const offset = isNaN(override) ? 0 : override - realPacificWall();
+  const demo = !isNaN(override);
+  const offset = demo ? override - realPacificWall() : 0;
   const now = () => realPacificWall() + offset;
 
-  // Format wall ms using UTC getters (because wall ms *is* the Pacific reading).
-  const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  function fmtTime(w, withSeconds) {
-    const d = new Date(w);
-    let h = d.getUTCHours(); const m = d.getUTCMinutes(); const ap = h >= 12 ? "PM" : "AM";
-    h = h % 12 || 12;
-    let s = h + ":" + String(m).padStart(2, "0");
-    if (withSeconds) s += ":" + String(d.getUTCSeconds()).padStart(2, "0");
-    return s + " " + ap;
+  const hm = w => { const d = new Date(w); return (d.getUTCHours() % 12 || 12) + ":" + String(d.getUTCMinutes()).padStart(2, "0"); };
+  const ap = w => (new Date(w).getUTCHours() >= 12 ? "PM" : "AM");
+  const fmtDay = w => { const d = new Date(w); return DAYS[d.getUTCDay()] + " · " + MONTHS[d.getUTCMonth()] + " " + d.getUTCDate(); };
+  function fmtRange(a, b) {
+    const same = ap(a) === ap(b);
+    return hm(a) + (same ? "" : "<small>" + ap(a) + "</small>") + "–" + hm(b) + "<small>" + ap(b) + "</small>";
   }
-  function fmtDay(w) { const d = new Date(w); return DAYS[d.getUTCDay()] + " · " + MONTHS[d.getUTCMonth()] + " " + d.getUTCDate(); }
-  function fmtDuration(ms) {
+  function fmtIn(ms) {
     const mins = Math.max(1, Math.round(ms / MIN));
     if (mins < 60) return mins + " min";
     const h = Math.floor(mins / 60), m = mins % 60;
-    if (h >= 24) { const days = Math.round(h / 24); return days + (days === 1 ? " day" : " days"); }
+    if (h >= 24) { const d = Math.round(h / 24); return d + (d === 1 ? " day" : " days"); }
     return h + " hr" + (m ? " " + m + " min" : "");
   }
 
-  /** Accent color for a card: yellow in the morning → blue in the evening. */
-  function accentFor(w) {
-    const d = new Date(w);
-    const hour = d.getUTCHours() + d.getUTCMinutes() / 60;
-    const t = Math.min(1, Math.max(0, (hour - 9) / (21 - 9)));   // 9 AM = yellow, 9 PM = blue
-    // HSL hue 48 (amber) → 220 (blue); keep it dark enough for white text.
-    const hue = 48 + t * (220 - 48);
-    const light = 42 - Math.sin(t * Math.PI) * 8;   // dip mid-day so the green phase stays legible
-    return "hsl(" + hue.toFixed(0) + " 85% " + light.toFixed(0) + "%)";
-  }
-
-  /* ------------------------------------------------------------------ */
-  /* 2. Build the data model                                             */
-  /* ------------------------------------------------------------------ */
-
+  /* ---------------- 2. Data ---------------- */
   const items = EVENTS.map((e, i) => {
     const start = parseWall(e.start);
     const end = e.end ? parseWall(e.end) : start + 60 * MIN;
     const keys = [].concat(e.place || []);
     const places = keys.map(k => PLACES[k]).filter(Boolean);
-    return Object.assign({}, e, { index: i, startW: start, endW: end, places, sponsors: e.audience === "sponsors" });
+    return Object.assign({}, e, { index: i, start, end, places });
   });
 
-  /* ------------------------------------------------------------------ */
-  /* 3. Render cards                                                     */
-  /* ------------------------------------------------------------------ */
-
-  const timeline = document.getElementById("timeline");
-  const rail = document.getElementById("rail");
-
-  function el(tag, cls, html) {
-    const n = document.createElement(tag);
-    if (cls) n.className = cls;
-    if (html != null) n.innerHTML = html;
-    return n;
-  }
-  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-
-  // Intro card (scroll up from the first event to see it)
-  const intro = el("section", "card card-intro");
-  intro.innerHTML =
-    '<div class="card-day">Thunderbird Adventist Academy</div>' +
-    "<h1>PUC College Days</h1>" +
-    "<p>Pacific Union College · Angwin, CA<br>Nov 14–16, 2026</p>" +
-    "<p>Every card is one stop. The red <b>NOW</b> badge is where you should be. Times are Pacific.</p>" +
-    '<p class="hint">Swipe up for the schedule ↓</p>';
-  timeline.appendChild(intro);
-
-  items.forEach((it, i) => {
-    const card = el("section", "card");
-    card.id = "e-" + it.id;
-    card.dataset.index = i;
-    card.style.setProperty("--accent", accentFor(it.startW));
-
-    const main = it.places[0] || {};
-    const whereText = it.where || it.places.map(p => p.name).join(" + ") || "TBA";
-    const sub = it.note || (it.places.length === 1 ? main.sub : "") || "";
-    const timeText = fmtTime(it.startW) + (it.end ? " – " + fmtTime(it.endW) : "");
-
-    card.innerHTML =
-      '<div class="card-day">' + esc(fmtDay(it.startW)) + "</div>" +
-      '<div class="card-head"><span class="card-time">' + esc(timeText) + '</span><span class="badge"></span></div>' +
-      '<h2 class="card-title">' + esc(it.title) + "</h2>" +
-      '<p class="card-where"><span class="pin">●</span> ' + esc(whereText) + "</p>" +
-      (sub ? '<p class="card-sub">' + esc(sub) + "</p>" : "") +
-      '<div class="card-photo"></div>' +
-      '<div class="card-map"><div class="map-canvas"></div></div>';
-
-    // Photo (or a gradient fallback when we have none)
-    const photo = card.querySelector(".card-photo");
-    if (main.img) {
-      const img = new Image();
-      img.alt = main.name || it.title;
-      img.loading = i < 3 ? "eager" : "lazy";
-      img.decoding = "async";
-      img.src = IMG_DIR + main.img;
-      img.onerror = () => { img.remove(); photo.appendChild(el("div", "fallback-label", esc(whereText))); };
-      photo.appendChild(img);
-    } else {
-      photo.appendChild(el("div", "fallback-label", esc(whereText)));
-    }
-
-    // Map tap target → Apple Maps (falls back to Google Maps in non-Apple browsers automatically)
-    if (main.lat) {
-      const a = el("a", "map-link", "<span>Open in Maps ↗</span>");
-      a.href = "https://maps.apple.com/?ll=" + main.lat + "," + main.lng + "&q=" + encodeURIComponent(main.name || it.title) + "&z=18";
-      a.target = "_blank"; a.rel = "noopener";
-      card.querySelector(".card-map").appendChild(a);
-    }
-
-    timeline.appendChild(card);
-    it.card = card;
-    rail.appendChild(document.createElement("i"));
-  });
-
-  /* ------------------------------------------------------------------ */
-  /* 4. Lazy Leaflet mini maps                                           */
-  /* ------------------------------------------------------------------ */
-
-  function initMap(it) {
-    if (it.map || !window.L || !it.places.length) return;
-    const node = it.card.querySelector(".map-canvas");
-    node.style.width = "100%"; node.style.height = "100%";
-    const map = L.map(node, {
-      zoomControl: false, dragging: false, touchZoom: false, scrollWheelZoom: false,
-      doubleClickZoom: false, boxZoom: false, keyboard: false, tap: false,
-      attributionControl: true, zoomSnap: 1   // integer zooms avoid tile seams
-    });
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19, attribution: "© OpenStreetMap"
-    }).addTo(map);
-
-    const circles = it.places.map(p => L.circle([p.lat, p.lng], {
-      radius: p.radius || 22, color: "#ff2a2a", weight: 3, fillColor: "#ff2a2a", fillOpacity: 0.28
-    }).addTo(map));
-
-    if (circles.length === 1) {
-      const p = it.places[0];
-      map.setView([p.lat, p.lng], p.radius > 150 ? 15 : p.radius > 60 ? 16 : 18);
-    } else {
-      // Fit all places (bounds from raw points: circle.getBounds() needs a map view first)
-      map.fitBounds(L.latLngBounds(it.places.map(p => [p.lat, p.lng])), { padding: [40, 40], maxZoom: 18 });
-    }
-    it.map = map;
-  }
-
-  // Create maps only for cards near the viewport (keeps 30 Leaflet maps cheap)
-  const io = new IntersectionObserver(entries => {
-    entries.forEach(en => {
-      if (!en.isIntersecting) return;
-      const it = items[+en.target.dataset.index];
-      if (it) initMap(it);
-    });
-  }, { root: timeline, rootMargin: "100% 0px 100% 0px" });
-  items.forEach(it => io.observe(it.card));
-
-  /* ------------------------------------------------------------------ */
-  /* 5. Status: which card is live, badges, rail                          */
-  /* ------------------------------------------------------------------ */
-
-  /** Index of the student's "current" card: live event (latest start wins), else next upcoming. */
+  /** Live event with the latest start; else next upcoming; else the last. */
   function currentIndex(t) {
     let live = -1;
-    items.forEach((it, i) => { if (!it.sponsors && it.startW <= t && t < it.endW) live = i; });
-    if (live >= 0) return { index: live, live: true };
-    const next = items.findIndex(it => !it.sponsors && it.startW > t);
-    return { index: next >= 0 ? next : items.length - 1, live: false };
+    items.forEach((it, i) => { if (it.start <= t && t < it.end && (live < 0 || it.start >= items[live].start)) live = i; });
+    if (live >= 0) return live;
+    const next = items.findIndex(it => it.start > t);
+    return next >= 0 ? next : items.length - 1;
+  }
+  function statusText(it, t) {
+    if (t >= it.start && t < it.end) return { text: "Now · " + fmtIn(it.end - t) + " left", now: true };
+    if (t < it.start) return { text: "In " + fmtIn(it.start - t), now: false };
+    return { text: "Done", now: false };
   }
 
-  let cur = { index: 0, live: false };
-  function refreshStatus() {
+  /* ---------------- 3. Render ---------------- */
+  const timeline = document.getElementById("timeline");
+  const rail = document.getElementById("rail");
+  const clock = document.getElementById("clock");
+  const layers = Array.from(document.querySelectorAll(".bar-layer"));
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  items.forEach(it => {
+    const p0 = it.places[0] || {};
+    const where = it.where || it.places.map(p => p.name).join(" · ");
+    const sub = !it.where && p0.sub ? p0.sub : "";
+    const card = document.createElement("section");
+    card.className = "card";
+    card.dataset.index = it.index;
+    card.innerHTML =
+      '<h2 class="title">' + esc(it.title) + "</h2>" +
+      '<div class="where">' + esc(where) + (sub ? '<span class="note">' + esc(sub) + "</span>" : "") +
+        (it.note ? '<span class="note">' + esc(it.note) + "</span>" : "") + "</div>" +
+      (p0.img ? '<img class="photo" alt="' + esc(p0.name || "") + '" src="' + IMG_DIR + esc(p0.img) + '"' + (it.index ? ' loading="lazy"' : "") + ">" : "") +
+      '<div class="map" aria-label="Campus map, ' + esc(where) + '">' +
+        '<div class="map-stage"><img alt="" draggable="false" src="' + esc(MAP.src) + '"></div>' +
+        '<div class="map-blur"></div><div class="map-fade"></div>' +
+        '<div class="map-cap">pinch to zoom</div>' +
+      "</div>";
+    timeline.appendChild(card);
+
+    const b = document.createElement("button");
+    b.type = "button";
+    b.setAttribute("aria-label", it.title);
+    b.addEventListener("click", () => scrollToIndex(it.index, true));
+    rail.appendChild(b);
+  });
+  rail.style.setProperty("--rail-len", Math.max(0, (items.length - 1) * 30) + "px");
+  const cards = Array.from(timeline.children);
+  const ticks = Array.from(rail.children);
+
+  /* ---------------- Sticky header (cross-fade) ---------------- */
+  let shown = -1, front = 0;
+  function fillLayer(layer, it, t) {
+    const st = statusText(it, t);
+    layer.querySelector(".bar-date").textContent = fmtDay(it.start);
+    layer.querySelector(".bar-time").innerHTML = fmtRange(it.start, it.end);
+    const s = layer.querySelector(".bar-status");
+    s.textContent = st.text;
+    s.classList.toggle("is-now", st.now);
+  }
+  function showHeader(i, animate) {
+    const it = items[i]; if (!it) return;
     const t = now();
-    cur = currentIndex(t);
-    items.forEach((it, i) => {
-      const badge = it.card.querySelector(".badge");
-      let cls = "badge", text;
-      const isLive = it.startW <= t && t < it.endW;
-      if (isLive) { cls += " badge-now"; text = "NOW · " + fmtDuration(it.endW - t) + " left"; }
-      else if (t >= it.endW) { cls += " badge-done"; text = "Done"; }
-      else if (i === cur.index && !cur.live) { cls += " badge-next"; text = "Up next · " + fmtDuration(it.startW - t); }
-      else if (it.startW - t <= 90 * MIN) { cls += " badge-soon"; text = "starts in " + fmtDuration(it.startW - t); }
-      else { cls += " badge-soon"; text = "in " + fmtDuration(it.startW - t); }
-      if (it.sponsors && t < it.endW) { cls = "badge badge-sponsor"; text = isLive ? "Sponsors · NOW" : "Sponsors only"; }
-      badge.className = cls; badge.textContent = text;
-      it.card.classList.toggle("is-done", t >= it.endW);
-      it.card.classList.toggle("is-live", isLive);
-      const tick = rail.children[i];
-      tick.classList.toggle("done", t >= it.endW);
-      tick.classList.toggle("live", i === cur.index);
+    if (i === shown) { fillLayer(layers[front], it, t); return; }
+    shown = i;
+    if (!animate) { fillLayer(layers[front], it, t); return; }
+    const back = 1 - front;
+    fillLayer(layers[back], it, t);
+    layers[back].classList.add("is-on");
+    layers[front].classList.remove("is-on");
+    front = back;
+  }
+  function updateRail(here) {
+    const live = currentIndex(now());
+    const t = now();
+    ticks.forEach((b, i) => {
+      b.classList.toggle("is-here", i === here);
+      b.classList.toggle("is-live", i === live && t >= items[i].start && t < items[i].end);
     });
-    updateHere();
   }
 
-  /* ------------------------------------------------------------------ */
-  /* 6. Clock, scrolling, "Jump to now"                                   */
-  /* ------------------------------------------------------------------ */
+  /* ---------------- Clock ---------------- */
+  function tickClock() {
+    clock.innerHTML = hm(now()) + (demo ? " <em>demo</em>" : "");
+  }
 
-  const clockEl = document.getElementById("clock");
-  function tickClock() { clockEl.textContent = fmtTime(now(), true); }
-
-  const nowBtn = document.getElementById("now-btn");
+  /* ---------------- Scrolling ---------------- */
   function visibleIndex() {
-    // card index under the middle of the screen (intro = -1)
-    return Math.round(timeline.scrollTop / timeline.clientHeight) - 1;
-  }
-  const peek = document.getElementById("peek");
-  function updateHere() {
-    const v = visibleIndex();
-    // Fixed "up next" line inside the blurred bottom edge
-    const next = items[v + 1];
-    peek.textContent = next ? "↓ " + fmtTime(next.startW) + " · " + next.title + (next.sponsors ? " (sponsors)" : "") : "End of the trip · safe travels!";
-    [...rail.children].forEach((n, i) => n.classList.toggle("here", i === v));
-    nowBtn.hidden = v === cur.index;
-    nowBtn.textContent = cur.live ? "Jump to now" : "Jump to next";
+    const h = timeline.clientHeight || 1;
+    return Math.max(0, Math.min(items.length - 1, Math.round(timeline.scrollTop / h)));
   }
   function scrollToIndex(i, smooth) {
-    const target = items[i] && items[i].card;
-    if (!target) return;
-    timeline.scrollTo({ top: target.offsetTop, behavior: smooth ? "smooth" : "instant" });
+    const c = cards[i]; if (!c) return;
+    timeline.scrollTo({ top: c.offsetTop, behavior: smooth ? "smooth" : "auto" });
   }
-  nowBtn.addEventListener("click", () => scrollToIndex(cur.index, true));
-  let scrollRaf = 0;
+  let raf = 0;
   timeline.addEventListener("scroll", () => {
-    cancelAnimationFrame(scrollRaf);
-    scrollRaf = requestAnimationFrame(updateHere);
+    if (raf) return;
+    raf = requestAnimationFrame(() => {
+      raf = 0;
+      const v = visibleIndex();
+      showHeader(v, true);
+      updateRail(v);
+    });
   }, { passive: true });
 
-  // Demo banner
-  if (offset) {
-    const b = document.getElementById("demo-banner");
-    b.hidden = false;
-    document.body.classList.add("is-demo");
-    b.textContent = "DEMO TIME · " + fmtDay(override).split(" · ")[0] + " " + fmtTime(override);
-  }
+  /* ---------------- 4. Map: pinch / pan / double-tap ---------------- */
+  function setupMap(el, it) {
+    const stage = el.querySelector(".map-stage");
+    const pins = it.places.filter(p => typeof p.mapX === "number").map(p => {
+      const d = document.createElement("div");
+      d.className = "map-pin";
+      el.insertBefore(d, el.querySelector(".map-cap"));
+      return { p, d };
+    });
+    const v = { s: 1, x: 0, y: 0 };
+    let home = null;
+    stage.style.width = MAP.w + "px";
+    stage.style.height = MAP.h + "px";
 
-  // Boot: start at the live (or next) event. Before the trip that's the first event.
-  refreshStatus();
+    function bounds() { return { w: el.clientWidth, h: el.clientHeight }; }
+    function minScale() { const b = bounds(); return Math.max(b.w / MAP.w, b.h / MAP.h); }
+    const MAX = 1.2;
+    function clamp() {
+      const b = bounds();
+      v.s = Math.min(MAX, Math.max(minScale(), v.s));
+      v.x = Math.min(0, Math.max(b.w - MAP.w * v.s, v.x));
+      v.y = Math.min(0, Math.max(b.h - MAP.h * v.s, v.y));
+    }
+    function apply() {
+      clamp();
+      stage.style.transform = "translate(" + v.x + "px," + v.y + "px) scale(" + v.s + ")";
+      pins.forEach(({ p, d }) => {
+        const r = Math.max(9, p.mapR * v.s);
+        d.style.left = (v.x + p.mapX * v.s) + "px";
+        d.style.top = (v.y + p.mapY * v.s) + "px";
+        d.style.width = d.style.height = (2 * r) + "px";
+      });
+    }
+    function computeHome() {
+      const b = bounds();
+      if (!b.w || !b.h) return null;
+      // frame the circle(s): center on them, show ~4.5x the cluster's size (≈ 700–900 map px across)
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      pins.forEach(({ p }) => { x0 = Math.min(x0, p.mapX - p.mapR); y0 = Math.min(y0, p.mapY - p.mapR); x1 = Math.max(x1, p.mapX + p.mapR); y1 = Math.max(y1, p.mapY + p.mapR); });
+      if (!pins.length) { x0 = 0; y0 = 0; x1 = MAP.w; y1 = MAP.h; }
+      const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+      const span = Math.max(x1 - x0, y1 - y0) * 4.2;
+      const s = Math.max(minScale(), Math.min(MAX, Math.min(b.w, b.h) / span));
+      return { s, x: b.w / 2 - cx * s, y: b.h / 2 - cy * s };
+    }
+    function reset() {
+      home = computeHome(); if (!home) return;
+      Object.assign(v, home); apply();
+      el.classList.remove("is-engaged");
+    }
+    function zoomAt(fx, fy, ns) {
+      const k = Math.min(MAX, Math.max(minScale(), ns)) / v.s;
+      v.x = fx - (fx - v.x) * k; v.y = fy - (fy - v.y) * k; v.s *= k;
+      apply();
+    }
+    // Touch: two fingers always pinch; one finger pans only after a pinch ("engaged").
+    let t0 = null, lastTap = 0;
+    const local = (t) => { const r = el.getBoundingClientRect(); return { x: t.clientX - r.left, y: t.clientY - r.top }; };
+    el.addEventListener("touchstart", (e) => {
+      if (e.touches.length === 2) {
+        const a = local(e.touches[0]), b = local(e.touches[1]);
+        t0 = { mode: "pinch", d: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, s: v.s, x: v.x, y: v.y };
+        e.preventDefault();
+      } else if (e.touches.length === 1) {
+        const a = local(e.touches[0]);
+        const nowT = Date.now();
+        if (nowT - lastTap < 300) { reset(); lastTap = 0; e.preventDefault(); t0 = null; return; }
+        lastTap = nowT;
+        t0 = el.classList.contains("is-engaged") ? { mode: "pan", px: a.x, py: a.y, x: v.x, y: v.y } : null;
+      }
+    }, { passive: false });
+    el.addEventListener("touchmove", (e) => {
+      if (!t0) return;
+      if (t0.mode === "pinch" && e.touches.length === 2) {
+        const a = local(e.touches[0]), b = local(e.touches[1]);
+        const d = Math.hypot(a.x - b.x, a.y - b.y), cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+        const ns = Math.min(MAX, Math.max(minScale(), t0.s * d / (t0.d || 1)));
+        const k = ns / t0.s;
+        v.s = ns; v.x = cx - (t0.cx - t0.x) * k; v.y = cy - (t0.cy - t0.y) * k;
+        apply(); e.preventDefault();
+      } else if (t0.mode === "pan" && e.touches.length === 1) {
+        const a = local(e.touches[0]);
+        v.x = t0.x + a.x - t0.px; v.y = t0.y + a.y - t0.py;
+        apply(); e.preventDefault();
+      }
+    }, { passive: false });
+    el.addEventListener("touchend", (e) => {
+      if (t0 && t0.mode === "pinch") { el.classList.add("is-engaged"); lastTap = 0; }
+      if (e.touches.length === 0) t0 = null;
+      else if (e.touches.length === 1 && el.classList.contains("is-engaged")) {
+        const a = local(e.touches[0]); t0 = { mode: "pan", px: a.x, py: a.y, x: v.x, y: v.y };
+      }
+    });
+    // iOS Safari page-zoom gesture events: keep them on the map
+    el.addEventListener("gesturestart", e => e.preventDefault());
+
+    // Desktop: ctrl/⌘ + wheel or trackpad pinch zooms, drag pans, double-click resets
+    el.addEventListener("wheel", (e) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      const r = el.getBoundingClientRect();
+      zoomAt(e.clientX - r.left, e.clientY - r.top, v.s * Math.exp(-e.deltaY * 0.01));
+      el.classList.add("is-engaged");
+    }, { passive: false });
+    let drag = null;
+    el.addEventListener("mousedown", (e) => { drag = { px: e.clientX, py: e.clientY, x: v.x, y: v.y }; e.preventDefault(); });
+    window.addEventListener("mousemove", (e) => { if (!drag) return; v.x = drag.x + e.clientX - drag.px; v.y = drag.y + e.clientY - drag.py; apply(); });
+    window.addEventListener("mouseup", () => { drag = null; });
+    el.addEventListener("dblclick", reset);
+
+    window.addEventListener("resize", reset);
+    reset();
+    return { reset };
+  }
+  const maps = cards.map((c, i) => setupMap(c.querySelector(".map"), items[i]));
+
+  /* ---------------- Status refresh ---------------- */
+  function refresh() { showHeader(visibleIndex(), false); updateRail(visibleIndex()); }
+
+  /* ---------------- Boot ---------------- */
+  const start = currentIndex(now());
+  scrollToIndex(start, false);
+  showHeader(start, false);
+  updateRail(start);
   tickClock();
-  scrollToIndex(cur.index, false);
-  initMap(items[cur.index]);
-  updateHere();
+  requestAnimationFrame(() => { maps.forEach(m => m.reset()); scrollToIndex(start, false); });
 
   setInterval(tickClock, 1000);
-  // Refresh badges at the top of every minute
-  setTimeout(function loop() { refreshStatus(); setTimeout(loop, MIN - (now() % MIN)); }, MIN - (now() % MIN));
-  // Re-sync when the phone wakes the page back up
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) { refreshStatus(); tickClock(); } });
-  // Keep the same card in place when the viewport size changes (rotation, toolbar)
-  window.addEventListener("resize", () => { const v = visibleIndex(); if (v >= 0) scrollToIndex(v, false); });
+  setTimeout(function loop() { refresh(); setTimeout(loop, MIN - (now() % MIN)); }, MIN - (now() % MIN));
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { refresh(); tickClock(); } });
+  window.addEventListener("resize", () => { const i = visibleIndex(); scrollToIndex(i, false); });
 
-  // Expose a tiny debug hook for Naoto / testing
   window.PUC_DEBUG = { now, items, currentIndex, scrollToIndex };
 })();
