@@ -152,39 +152,6 @@
     return d;
   });
 
-  /* v10: one small tick on the rail per event. Tick k sits DOT_TRAVEL × (k − scroll)
-   * below the landed title, so tick #1 is exactly where the incoming dot starts
-   * its parallax travel and every tick rides up with the dot as you scroll.
-   * The tick cross-fades into the dot (tick 1→0 while the dot goes 0→1); past
-   * ticks are gone. Mid gray at #1, ~25% lighter per step; the rail's own
-   * bottom fade (same mask) dissolves the rest. */
-  const TICK_MAX = 4.5, TICK_FALLOFF = 0.75;
-  const ticksEl = document.getElementById("ticks");
-  const ticks = ticksEl ? items.map((_, i) => {
-    const t = document.createElement("div");
-    t.className = "tick";
-    t.innerHTML = '<svg viewBox="0 0 20 5" width="20" height="5" aria-hidden="true"><path d="M1.2 1.4 Q10 4.2 18.8 1.4"/></svg>';
-    ticksEl.appendChild(t);
-    return t;
-  }) : [];
-  function syncTicks(raw) {
-    if (!ticks.length) return;
-    const land = titleLandingY();
-    const top = ticksEl.getBoundingClientRect().top;
-    ticks.forEach((t, k) => {
-      const sIdx = k - raw;                       // 1 = the incoming dot's start position
-      let o = 0;
-      if (sIdx > 0 && sIdx < TICK_MAX + 1) {
-        const fadeIn = Math.min(1, sIdx);         // cross-fade with the incoming dot
-        const fall = Math.pow(TICK_FALLOFF, Math.max(0, sIdx - 1));
-        const tail = Math.min(1, Math.max(0, TICK_MAX + 1 - sIdx));   // soft end of the list
-        o = fadeIn * fall * tail;
-      }
-      t.style.opacity = o.toFixed(3);
-      t.style.transform = "translateY(" + (land - top + DOT_TRAVEL * sIdx - 2.5).toFixed(2) + "px)";
-    });
-  }
-
   /* Landing Y of a snapped card's title (first-line center). Same for every card. */
   function titleLandingY() {
     const card = cards[0];
@@ -266,7 +233,6 @@
     let p = (i0 === i1) ? 0 : raw - i0;
     if (p < 1e-4) p = 0;
     if (p > 1 - 1e-4) p = 1;
-    syncTicks(i0 + p);
 
     dots.forEach((d) => {
       setDotCenter(d, land);
@@ -298,7 +264,6 @@
 
   function parkDot(i) {
     const land = titleLandingY();
-    syncTicks(i);
     dots.forEach((d, k) => {
       setDotCenter(d, land);
       d.style.transform = "translateY(0px)";
@@ -387,11 +352,11 @@
     if (reduceMotion || !canHint()) return;
     const i = arrived >= 0 ? arrived : visibleIndex();
     const card = cards[i]; if (!card) return;
-    [card, dotsEl, ticksEl].filter(Boolean).forEach(el => { el.classList.remove("is-nudge"); void el.offsetWidth; el.classList.add("is-nudge"); });
+    [card, dotsEl].forEach(el => { el.classList.remove("is-nudge"); void el.offsetWidth; el.classList.add("is-nudge"); });
     document.body.classList.add("is-hinting");
     clearTimeout(nudgeTimer);
     nudgeTimer = setTimeout(() => {
-      card.classList.remove("is-nudge"); dotsEl.classList.remove("is-nudge"); if (ticksEl) ticksEl.classList.remove("is-nudge");
+      card.classList.remove("is-nudge"); dotsEl.classList.remove("is-nudge");
       document.body.classList.remove("is-hinting");
     }, 950);   // the SWIPE UP text pulse is 900ms
   }
@@ -690,5 +655,5 @@
     armHint();
   });
 
-  window.PUC_DEBUG = { now, items, currentIndex, scrollToIndex, map, titleLandingY, titleCenterY, cardH, syncDots, parkDot, armSlide, resetTracks, armHint, fireHint, clearHint, DOT_TRAVEL, HINT_IDLE, dots, timeline, SLIDE_DWELL, nudge, placeArrows, syncTicks, ticks };
+  window.PUC_DEBUG = { now, items, currentIndex, scrollToIndex, map, titleLandingY, titleCenterY, cardH, syncDots, parkDot, armSlide, resetTracks, armHint, fireHint, clearHint, DOT_TRAVEL, HINT_IDLE, dots, timeline, SLIDE_DWELL, nudge, placeArrows };
 })();
