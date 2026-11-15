@@ -1,0 +1,193 @@
+/* =====================================================================
+ * PUC College Days — styles
+ * Dark, full-screen, snap-scrolling timeline sized for iPhone portrait.
+ * ===================================================================== */
+
+:root {
+  --bg: #0b0f1a;
+  --card: #121829;
+  --text: #f4f6fb;
+  --muted: #9aa3b8;
+  --line: rgba(255, 255, 255, 0.08);
+  --live: #ff3b3b;          /* NOW badge + map circle */
+  --accent: #f5c400;        /* per-card accent; overwritten inline (yellow AM → blue PM) */
+  --edge: 72px;             /* height of the blurred top/bottom edges */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --header-h: 52px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Inter, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;                         /* the timeline is the only scroller */
+  overscroll-behavior: none;
+}
+
+/* ---------- Timeline scroller with controlled (snap) scrolling ---------- */
+.timeline {
+  position: fixed; inset: 0;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;            /* always land on a card */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  scrollbar-width: none;
+}
+.timeline::-webkit-scrollbar { display: none; }
+
+.card {
+  height: 100vh; height: 100dvh;            /* one card = one screen */
+  scroll-snap-align: start;
+  scroll-snap-stop: always;                 /* one swipe = one card, no skipping */
+  display: flex; flex-direction: column;
+  padding: calc(var(--safe-top) + var(--header-h) + 14px) 18px calc(var(--safe-bottom) + var(--edge) - 6px);
+  gap: 12px;
+  position: relative;
+}
+
+/* Day label + time row */
+.card-day { font-size: 13px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.card-time {
+  font-size: 15px; font-weight: 700; color: #fff;
+  background: var(--accent); padding: 5px 10px; border-radius: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Status badges */
+.badge { font-size: 13px; font-weight: 700; padding: 5px 10px; border-radius: 999px; white-space: nowrap; }
+.badge-now  { background: var(--live); color: #fff; box-shadow: 0 0 0 0 rgba(255,59,59,.6); animation: pulse 2s infinite; }
+.badge-next { background: rgba(255,255,255,.14); color: #fff; }
+.badge-soon { background: rgba(255,255,255,.08); color: #dfe4ee; }
+.badge-done { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+.badge-sponsor { background: #3a2e5c; color: #d8ccff; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,59,59,.55); } 70% { box-shadow: 0 0 0 10px rgba(255,59,59,0); } 100% { box-shadow: 0 0 0 0 rgba(255,59,59,0); } }
+
+/* Title + location */
+.card-title { font-size: clamp(28px, 8.4vw, 38px); line-height: 1.05; font-weight: 800; margin: 0; letter-spacing: -.01em; }
+.card-where { font-size: 18px; font-weight: 600; margin: 0; }
+.card-where .pin { color: var(--live); }
+.card-sub { font-size: 14px; color: var(--muted); margin: -6px 0 0; }
+
+/* Photo of the location */
+.card-photo {
+  flex: 1 1 0; min-height: 120px;
+  border-radius: 18px; overflow: hidden; position: relative;
+  background: linear-gradient(135deg, var(--accent), #1a2340 80%);
+}
+.card-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Gradient fallback when a place has no photo */
+.card-photo .fallback-label {
+  position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 20px;
+  font-size: 22px; font-weight: 700; color: rgba(255,255,255,.9);
+  background: radial-gradient(circle at 30% 20%, rgba(255,255,255,.18), transparent 55%);
+}
+.card.is-done .card-photo img { filter: grayscale(.7) brightness(.7); }
+
+/* Mini map */
+.card-map {
+  flex: 0 0 22dvh; min-height: 130px;
+  border-radius: 18px; overflow: hidden; position: relative;
+  background: #1a2133; border: 1px solid var(--line);
+}
+.card-map .leaflet-container { width: 100%; height: 100%; background: #1a2133; pointer-events: none; } /* never steals the swipe */
+.map-link {
+  position: absolute; inset: 0; z-index: 500; display: block;
+  -webkit-tap-highlight-color: transparent;
+}
+.map-link span {
+  position: absolute; right: 8px; bottom: 8px; font-size: 12px; font-weight: 600;
+  background: rgba(11,15,26,.8); color: #fff; padding: 4px 8px; border-radius: 8px;
+}
+.leaflet-control-attribution { font-size: 9px !important; background: rgba(11,15,26,.6) !important; color: #aaa !important; }
+.leaflet-control-attribution a { color: #ccc !important; }
+
+/* "Up next" hint, fixed inside the bottom blur */
+.peek {
+  position: fixed; z-index: 12; left: 0; right: 0; bottom: calc(var(--safe-bottom) + 14px);
+  text-align: center; font-size: 13px; font-weight: 600; color: #c9d0de; pointer-events: none;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 24px;
+}
+
+/* ---------- Fixed chrome ---------- */
+.topbar {
+  position: fixed; z-index: 20; top: 0; left: 0; right: 0;
+  padding: calc(var(--safe-top) + 8px) 14px 0;
+  height: calc(var(--safe-top) + var(--header-h));
+  display: flex; align-items: center; justify-content: space-between;
+  pointer-events: none;
+}
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
+.brand-mark { background: #c8102e; color: #fff; font-size: 11px; font-weight: 800; letter-spacing: .06em; padding: 4px 6px; border-radius: 6px; }
+.clock-pill {
+  display: flex; align-items: center; gap: 7px;
+  background: rgba(18, 24, 41, .72); border: 1px solid var(--line);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  padding: 7px 12px; border-radius: 999px;
+  font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.clock-zone { font-size: 11px; color: var(--muted); font-weight: 600; }
+.live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--live); animation: blink 1.6s infinite; }
+@keyframes blink { 50% { opacity: .35; } }
+
+/* Blurred edges: backdrop blur, faded out toward the middle with a gradient mask */
+.edge {
+  position: fixed; left: 0; right: 0; z-index: 10; pointer-events: none;
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+.edge-top {
+  top: 0; height: calc(var(--safe-top) + var(--header-h) + 18px);
+  background: linear-gradient(to bottom, rgba(11,15,26,.95), rgba(11,15,26,0));
+  -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent);
+          mask-image: linear-gradient(to bottom, #000 55%, transparent);
+}
+.edge-bottom {
+  bottom: 0; height: calc(var(--safe-bottom) + var(--edge));
+  background: linear-gradient(to top, rgba(11,15,26,.95), rgba(11,15,26,0));
+  -webkit-mask-image: linear-gradient(to top, #000 45%, transparent);
+          mask-image: linear-gradient(to top, #000 45%, transparent);
+}
+
+/* Progress rail (one tick per card) */
+.rail {
+  position: fixed; z-index: 15; right: 5px; top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 4px; pointer-events: none;
+}
+.rail i { display: block; width: 3px; height: 9px; border-radius: 2px; background: rgba(255,255,255,.16); transition: all .2s; }
+.rail i.done { background: rgba(255,255,255,.32); }
+.rail i.live { background: var(--live); }
+.rail i.here { width: 4px; height: 16px; background: #fff; }
+
+/* "Jump to now" floating button */
+.now-btn {
+  position: fixed; z-index: 25; left: 50%; transform: translateX(-50%);
+  bottom: calc(var(--safe-bottom) + 84px);
+  border: 0; border-radius: 999px; padding: 10px 16px;
+  background: var(--live); color: #fff; font: inherit; font-weight: 700; font-size: 14px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.4);
+}
+
+body.is-demo .card { padding-top: calc(var(--safe-top) + var(--header-h) + 36px); }
+.demo-banner {
+  position: fixed; z-index: 21; left: 50%; transform: translateX(-50%);
+  top: calc(var(--safe-top) + var(--header-h) - 2px);
+  font-size: 11px; font-weight: 700; color: #111; background: #ffd84d;
+  padding: 3px 8px; border-radius: 6px; pointer-events: none;
+}
+
+/* Intro (first) card */
+.card-intro { justify-content: center; text-align: left; }
+.card-intro h1 { font-size: 44px; line-height: 1; margin: 0 0 10px; font-weight: 800; letter-spacing: -.02em; }
+.card-intro p { color: var(--muted); font-size: 17px; line-height: 1.4; margin: 0 0 10px; }
+.card-intro .hint { margin-top: 26px; color: #fff; font-weight: 600; }
+
+.noscript { padding: 80px 20px; }
+
+/* Short phones (iPhone SE etc.) */
+@media (max-height: 700px) {
+  .card { gap: 9px; }
+  .card-map { flex-basis: 18dvh; }
+  .card-title { font-size: 28px; }
+}
