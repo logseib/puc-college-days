@@ -30,7 +30,7 @@
 
   const API = "https://countapi.mileshilliard.com/api/v1/";
   const NS = "logseib-puc-college-days.";
-  const GOAL = 15;   // TEMP for Logan test; set back to 1000
+  const GOAL = 3000;
   const EVENT_ID = "sun-free";
   const GIF = "assets/img/egg-prize.gif";
   const POLL_MS = 5000;
