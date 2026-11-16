@@ -6,7 +6,9 @@
  *             Demo override: ?now=2026-11-15T10:15 (keeps ticking).
  *  2. Render: one snap card per event (start time + title on one line,
  *             place, 3:2 photo). The fixed header is only the date
- *             ("Sunday, November 15") and the live clock (HH:MMAM).
+ *             ("Sunday, November 15" / "Monday, November 16") and the
+ *             live clock (HH:MMAM). A quiet day divider sits above the
+ *             title of the first card of a new day.
  *             Visible labels put a space on both sides of a colon
  *             ("10:00AM : Worship", "Location : PUC Church"), except
  *             inside clock times themselves ("10:00"). Church exteriors
@@ -29,7 +31,11 @@
  *             10 minutes. The M:SS badge pulses calmly until it hits 0.
  *             At 0 the badge is removed, RIGHT NOW takes over on that
  *             card, and UP NEXT moves to the following event, no reload
- *             needed. After the last event starts there is no UP NEXT.
+ *             needed. After the last event starts there is no UP NEXT;
+ *             when it ends the page stays on that last card (Depart
+ *             Campus). Sponsors-only cards (Leadership Forum) are shown
+ *             and marked, but they are never the student's RIGHT NOW,
+ *             UP NEXT, landing card, or red rail dot.
  *             The map frames the card that is shown.
  *  Rail:   a fixed fading hairline in the left margin. Dots are fixed
  *             on that rail and driven by scroll position (no time-based
@@ -109,7 +115,7 @@
     const keys = [].concat(e.place || []);
     const places = keys.map(k => PLACES[k]).filter(Boolean);
     const photo = (e.photo && PLACES[e.photo]) || places[0] || {};
-    return Object.assign({}, e, { index: i, start, end, places, photo });
+    return Object.assign({}, e, { index: i, start, end, places, photo, sponsors: e.audience === "sponsors" });
   });
 
   /** Live event with the latest start; else next upcoming; else the last.
@@ -117,9 +123,12 @@
    *  mark the event that is actually happening. */
   function currentIndex(t) {
     let live = -1;
-    items.forEach((it, i) => { if (it.start <= t && t < it.end && (live < 0 || it.start >= items[live].start)) live = i; });
+    items.forEach((it, i) => {
+      if (it.sponsors) return;
+      if (it.start <= t && t < it.end && (live < 0 || it.start >= items[live].start)) live = i;
+    });
     if (live >= 0) return live;
-    const next = items.findIndex(it => it.start > t);
+    const next = items.findIndex(it => !it.sponsors && it.start > t);
     return next >= 0 ? next : items.length - 1;
   }
 
@@ -129,7 +138,7 @@
    * "RIGHT NOW" and the red dot stay on the live event. */
   const EARLY_MS = 10 * MIN;
   function focusIndex(t) {
-    const next = items.findIndex(it => it.start > t);
+    const next = items.findIndex(it => !it.sponsors && it.start > t);
     if (next >= 0 && t >= items[next].start - EARLY_MS) return next;
     return currentIndex(t);
   }
@@ -153,18 +162,29 @@
     return '<div class="photo-wrap"><div class="photo-track">' + ext + inn + "</div></div>";
   }
 
+  let prevDay = "";
   items.forEach(it => {
     const p0 = it.photo || {};
     const where = it.where || it.places.map(p => p.name).join(" · ");
     const sub = !it.where && it.places[0] && it.places[0].sub ? it.places[0].sub : "";
     const card = document.createElement("section");
-    card.className = "card";
+    card.className = "card" + (it.sponsors ? " is-sponsors" : "");
     card.dataset.index = it.index;
+    const day = fmtDay(it.start);
+    const dayBreak = (prevDay && day !== prevDay)
+      ? '<div class="day-break">' + esc(day) + "</div>"
+      : "";
+    prevDay = day;
+    const sponsorTag = it.sponsors
+      ? '<span class="sponsor-tag">Sponsors only</span>'
+      : "";
     card.innerHTML =
+      dayBreak +
       '<div class="block">' +
         '<h2 class="title">' +
           '<span class="now-tag" aria-hidden="true">Right now</span>' +
           '<span class="next-tag" aria-hidden="true">Up next</span>' +
+          sponsorTag +
           '<span class="lead"><span class="when">' + esc(fmtStart(it.start)) + '</span><span class="sep"> :&nbsp;</span></span>' +
           '<span class="name">' + esc(it.title) + "</span>" +
         "</h2>" +
@@ -230,16 +250,24 @@
   }
   /** Index of the next upcoming event (start > t); -1 after the last event starts. */
   function upNextIndex(t) {
-    return items.findIndex(it => it.start > t);
+    return items.findIndex(it => !it.sponsors && it.start > t);
   }
   function updateRail() {
     const t = now();
     const soon = upNextIndex(t);
     cards.forEach((c, i) => {
-      const isLive = t >= items[i].start && t < items[i].end;
+      const it = items[i];
+      const happening = t >= it.start && t < it.end;
+      const isLive = happening && !it.sponsors;
       c.classList.toggle("is-current", isLive);
+      c.classList.toggle("is-sponsor-now", happening && it.sponsors);
       const tag = c.querySelector(".now-tag");
       if (tag) tag.setAttribute("aria-hidden", isLive ? "false" : "true");
+      const sTag = c.querySelector(".sponsor-tag");
+      if (sTag) {
+        sTag.textContent = happening ? "SPONSORS · NOW" : "SPONSORS ONLY";
+        sTag.setAttribute("aria-hidden", "false");
+      }
       dots[i].classList.toggle("is-live", isLive);
       const isUpNext = i === soon;
       c.classList.toggle("is-up-next", isUpNext);

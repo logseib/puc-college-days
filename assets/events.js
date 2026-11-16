@@ -33,8 +33,10 @@
  * mapX / mapY / mapR = circle center + radius in that image's pixels,
  * read off the numbered labels on the illustration:
  *   #14 Church & Sanctuary, #18 Church Complex (Fireside Room, Scales Chapel),
- *   #20 Pacific Auditorium (gym), #26 Dining Commons,
- *   #39 Grainger Hall, #44 Graf Hall.
+ *   #19 Paulin Hall, #20 Pacific Auditorium (gym), #26 Dining Commons,
+ *   #28 Library (Walter C. Utt Center), #39 Grainger Hall, #44 Graf Hall.
+ *   Campus Mall has no numbered badge: the circle sits in the open
+ *   pedestrian plaza between Dining Commons and the Library.
  * Off-campus or unsited places (St. Helena, Free Time) have no mapX — the
  * map then shows the full campus and draws no red circle.
  * Note: the illustration is rotated — north points LEFT, east points UP. */
@@ -54,11 +56,11 @@ window.PUC_PLACES = {
   scales:     { name: "Scales Chapel",              sub: "Church Complex", lat: 38.570360, lng: -122.440852, img: "puc-scales.jpg" },
   newton:     { name: "Newton Chapel",              sub: "Newton Hall", lat: 38.571866, lng: -122.439473, img: "puc-newton.jpg" },
   gym:        { name: "PUC Gym (Pacific Auditorium)", lat: 38.568787, lng: -122.441264, mapX: 1980, mapY: 1242, mapR: 140, img: "puc-gym.jpg" },
-  paulin:     { name: "Paulin Recital Hall",        sub: "Paulin Hall", lat: 38.569513, lng: -122.441211, img: "puc-paulin.jpg" },
-  utt:        { name: "Utt Center",                 sub: "New wing of Nelson Memorial Library", lat: 38.569530, lng: -122.440122, img: "puc-library-utt.jpg" },
+  paulin:     { name: "Paulin Recital Hall",        sub: "Paulin Hall", lat: 38.569513, lng: -122.441211, mapX: 1725, mapY: 1232, mapR: 100, img: "puc-paulin.jpg" },
+  utt:        { name: "Utt Center",                 sub: "New wing of Nelson Memorial Library", lat: 38.569530, lng: -122.440122, mapX: 1749, mapY: 1047, mapR: 110, img: "puc-library-utt.jpg" },
   grainger:   { name: "Grainger Hall",              sub: "Girls", lat: 38.570972, lng: -122.439145, mapX: 1348, mapY: 765, mapR: 120, img: "puc-grainger.jpg" },
   graf:       { name: "Graf Hall",                  sub: "Boys",  lat: 38.568632, lng: -122.438866, mapX: 1988, mapY: 710, mapR: 110, img: "puc-graf.jpg" },
-  mall:       { name: "Campus Mall",                lat: 38.569889, lng: -122.440449, img: "puc-campus-mall.jpg", radius: 120 },
+  mall:       { name: "Campus Mall",                lat: 38.569889, lng: -122.440449, mapX: 1665, mapY: 1048, mapR: 120, img: "puc-campus-mall.jpg", radius: 120 },
   airport:    { name: "PUC Airport (Virgil O. Parrett Field)", lat: 38.572059, lng: -122.434216, img: "angwin-scenery.jpg", radius: 90 },
   elmshaven:  { name: "Elmshaven",                  sub: "Ellen G. White's home · 125 Glass Mountain Ln, St. Helena", lat: 38.537060, lng: -122.478762, img: "elmshaven.jpg" },
   sthelena:   { name: "Downtown St. Helena",        sub: "Main Street, St. Helena, CA", lat: 38.504575, lng: -122.469352, img: "sthelena.jpg", radius: 220 },
@@ -80,5 +82,15 @@ window.PUC_EVENTS = [
   { id: "sun-festival",  start: "2026-11-15T17:00", end: "2026-11-15T19:00", title: "Fall Festival",      place: "gym" },
   { id: "sun-free",      start: "2026-11-15T19:00", end: "2026-11-15T20:00", title: "Free Time",          place: "free" },
   { id: "sun-dessert",   start: "2026-11-15T20:00", end: "2026-11-15T21:00", title: "Late Night Dessert Bar", place: "fireside" },
-  { id: "sun-dorms",     start: "2026-11-15T22:00", end: "2026-11-15T23:00", title: "Back to Dorms",      place: ["grainger", "graf"], where: "Grainger (girls) / Graf (boys)" }
+  { id: "sun-dorms",     start: "2026-11-15T22:00", end: "2026-11-15T23:00", title: "Back to Dorms",      place: ["grainger", "graf"], where: "Grainger (girls) / Graf (boys)" },
+
+  // ---------------- Monday, Nov 16 ----------------
+  { id: "mon-breakfast", start: "2026-11-16T07:30", end: "2026-11-16T08:30", title: "Breakfast",          place: "dining", note: "Wear your professional clothes for class today" },
+  { id: "mon-walk",      start: "2026-11-16T08:50", end: "2026-11-16T09:00", title: "Walk to Classes",    place: "mall" },
+  { id: "mon-session1",  start: "2026-11-16T09:00", end: "2026-11-16T09:50", title: "Academic Session I", place: "mall", where: "Various departments" },
+  { id: "mon-forum",     start: "2026-11-16T09:00", end: "2026-11-16T10:00", title: "Leadership Forum",   place: "utt", audience: "sponsors", note: "Sponsors & parents only" },
+  { id: "mon-session2",  start: "2026-11-16T10:00", end: "2026-11-16T10:50", title: "Academic Session II", place: "mall", where: "Various departments" },
+  { id: "mon-closing",   start: "2026-11-16T11:00", end: "2026-11-16T11:30", title: "Closing Session",    place: "paulin" },
+  { id: "mon-lunch",     start: "2026-11-16T11:30", end: "2026-11-16T12:30", title: "Lunch",              place: "dining" },
+  { id: "mon-depart",    start: "2026-11-16T13:00", end: "2026-11-16T13:30", title: "Depart Campus",      place: "mall", note: "Have your bags packed" }
 ];

@@ -68,7 +68,7 @@ body {
 .rail {
   position: fixed; z-index: 0; pointer-events: none;
   left: calc(var(--rail-x) - .5px); width: 1px;
-  top: calc(var(--safe-top) + var(--bar-h) + 4px);
+  top: calc(var(--safe-top) + var(--bar-h) + 17px);
   bottom: calc(var(--map-h) + 6px);           /* stops above the full-width map */
   background: #7d7d7d;
   -webkit-mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent);
@@ -105,12 +105,34 @@ body {
 .timeline::-webkit-scrollbar { display: none; }
 
 .card {
+  position: relative;               /* anchors the day-break in the header pad */
   height: 100%;                     /* one card = the space above the map */
   scroll-snap-align: start;
   scroll-snap-stop: always;
   display: flex; flex-direction: column;
   padding: calc(var(--safe-top) + var(--bar-h) + 22px) var(--pad-r) 22px var(--gutter);
   gap: 12px;
+}
+/* Quiet label in the padding above the title, only on the first card of a
+ * new day. Absolutely placed so it does not move the title or rail dots. */
+.day-break {
+  position: absolute;
+  top: calc(var(--safe-top) + var(--bar-h) + 17px);
+  left: var(--gutter);
+  right: var(--pad-r);
+  display: flex; align-items: center; gap: 8px;
+  font-size: 10px; font-weight: 500; line-height: 1;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted);
+  pointer-events: none;
+}
+.day-break::before,
+.day-break::after {
+  content: "";
+  flex: 1 1 0;
+  height: 1px;
+  background: #8a8a8a;
+  opacity: .55;
 }
 @supports (height: 1dvh) { :root { --map-h: 47dvh; } }
 
@@ -162,8 +184,24 @@ body {
 }
 .now-tag { background: var(--red); }
 .next-tag { background: var(--blue); }
+.sponsor-tag {
+  display: none;
+  float: right;
+  margin-left: 8px;
+  margin-top: 5.5px;
+  color: #f4eef8;
+  font-family: var(--mono);
+  font-size: 9px; font-weight: 600; line-height: 1;
+  letter-spacing: .08em; text-transform: uppercase;
+  padding: 3px 5px 2px;
+  border-radius: 0;
+  white-space: nowrap;
+  pointer-events: none;
+  background: #4a3058;
+}
 .card.is-current .now-tag { display: inline-block; }
 .card.is-up-next .next-tag { display: inline-block; }
+.card.is-sponsors .sponsor-tag { display: inline-block; }
 
 /* v19: calm pulse while UP NEXT is in live M:SS mode (under 10 minutes).
  * Transform + box-shadow only, so layout does not shift. */
