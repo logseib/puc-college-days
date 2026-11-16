@@ -21,6 +21,8 @@
  *   note      optional small line under the location (string or array)
  *   clock     optional title time, when the displayed clock is not the
  *             Pacific start (e.g. Arrive PHX is 10:25PM Arizona time)
+ *   mapImg    optional image filename shown in the map slot instead of
+ *             the campus map (Academic Sessions use the name-tag photo)
  *   audience  "all" (default) or "sponsors" — sponsors-only cards are
  *             shown but never chosen as the student's "current" event
  * ===================================================================== */
@@ -95,10 +97,8 @@ window.PUC_EVENTS = [
   // Vans and Depart for SFO use the dorms, same as Back to Dorms.
   { id: "mon-load",      start: "2026-11-16T07:00", end: "2026-11-16T07:30", title: "Load Vans",          place: ["grainger", "graf"], where: "Grainger (girls) / Graf (boys)", note: ["All luggage. Wear your academic-tour outfit", "Keep your airport outfit handy. Change after security."] },
   { id: "mon-breakfast", start: "2026-11-16T07:30", end: "2026-11-16T08:30", title: "Breakfast",          place: "dining" },
-  { id: "mon-walk",      start: "2026-11-16T08:50", end: "2026-11-16T09:00", title: "Walk to Classes",    place: "mall" },
-  { id: "mon-session1",  start: "2026-11-16T09:00", end: "2026-11-16T09:50", title: "Academic Session I", place: "mall", where: "Check your name tag for where you need to go" },
-  { id: "mon-forum",     start: "2026-11-16T09:00", end: "2026-11-16T10:00", title: "Leadership Forum",   place: "utt", audience: "sponsors", note: "Sponsors & parents only" },
-  { id: "mon-session2",  start: "2026-11-16T10:00", end: "2026-11-16T10:50", title: "Academic Session II", place: "mall", where: "Check your name tag for where you need to go" },
+  { id: "mon-session1",  start: "2026-11-16T09:00", end: "2026-11-16T09:50", title: "Academic Session I", place: "mall", where: "Check your name tag for where you need to go", mapImg: "name-tag.jpg" },
+  { id: "mon-session2",  start: "2026-11-16T10:00", end: "2026-11-16T10:50", title: "Academic Session II", place: "mall", where: "Check your name tag for where you need to go", mapImg: "name-tag.jpg" },
   { id: "mon-closing",   start: "2026-11-16T11:00", end: "2026-11-16T11:30", title: "Closing Session",    place: "paulin" },
   { id: "mon-sfo",       start: "2026-11-16T11:30", end: "2026-11-16T16:55", title: "Depart for SFO",     place: ["grainger", "graf"], where: "Grainger (girls) / Graf (boys)", note: "Lunch bags in your vehicle, eat en route" },
   // Flight 2645 SFO 4:55PM PT → LAX 6:35PM PT; Flight 2671 LAX 8:00PM PT →

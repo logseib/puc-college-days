@@ -35,6 +35,8 @@
  *             when it ends the page stays on that last card (Arrive PHX).
  *             Offsite cards (SFO, PHX) hide the campus map and show a
  *             simple text location instead, with no red circle.
+ *             Academic Session cards show the name-tag photo in the map
+ *             slot, in the same feathered frame, instead of a red circle.
  *             Sponsors-only cards (Leadership Forum) are shown
  *             and marked, but they are never the student's RIGHT NOW,
  *             UP NEXT, landing card, or red rail dot.
@@ -611,30 +613,49 @@
     const offEl = document.getElementById("map-offsite");
     const offCode = offEl ? offEl.querySelector(".map-offsite-code") : null;
     const offName = offEl ? offEl.querySelector(".map-offsite-name") : null;
+    const photoEl = document.getElementById("map-photo");
+    const photoImg = photoEl ? photoEl.querySelector("img") : null;
+    const PHOTO_ALT = "Example name tag : class times and rooms are listed under your name";
     function isOffsite(it) {
       return !!(it && it.places.length && it.places.every(p => p.offsite));
     }
+    function mapLocked() {
+      return el.classList.contains("is-offsite") || el.classList.contains("is-photo");
+    }
     /** Make event i the map's subject: cross-fade circles and glide (or jump) there.
-     *  Offsite events hide the campus illustration and show a text location. */
+     *  Offsite events hide the campus illustration and show a text location.
+     *  Events with mapImg show that photo in the same framed slot. */
     function show(i, animate) {
       if (!items[i]) return;
       const it = items[i];
       const names = it.places.map(p => p.name);
-      const off = isOffsite(it);
+      const photo = it.mapImg || "";
+      const off = !photo && isOffsite(it);
+      el.classList.toggle("is-photo", !!photo);
       el.classList.toggle("is-offsite", off);
+      if (photoEl) {
+        photoEl.hidden = !photo;
+        if (photo && photoImg) {
+          const src = IMG_DIR + photo + "?v=1";
+          if (photoImg.getAttribute("src") !== src) photoImg.src = src;
+          if (!photoImg.getAttribute("alt")) photoImg.alt = PHOTO_ALT;
+        }
+      }
       if (offEl) {
         const p0 = it.places[0] || {};
         if (offCode) offCode.textContent = p0.sub || "";
         if (offName) offName.textContent = it.where || p0.name || "";
         offEl.hidden = !off;
       }
-      pins.forEach(({ p, d }) => d.classList.toggle("is-on", !off && names.indexOf(p.name) >= 0));
-      areas.forEach(({ p, d }) => d.classList.toggle("is-on", !off && names.indexOf(p.name) >= 0));
-      el.setAttribute("aria-label", off
-        ? ("Location : " + (it.where || names.join(", ")))
-        : ("Campus map : " + (it.where || names.join(", "))));
+      pins.forEach(({ p, d }) => d.classList.toggle("is-on", !off && !photo && names.indexOf(p.name) >= 0));
+      areas.forEach(({ p, d }) => d.classList.toggle("is-on", !off && !photo && names.indexOf(p.name) >= 0));
+      el.setAttribute("aria-label", photo
+        ? PHOTO_ALT
+        : off
+          ? ("Location : " + (it.where || names.join(", ")))
+          : ("Campus map : " + (it.where || names.join(", "))));
       active = i;
-      if (off) { stopAnim(); return; }
+      if (off || photo) { stopAnim(); return; }
       const home = homeFor(i); if (!home) return;
       if (animate) glideTo(home, 500);
       else { stopAnim(); Object.assign(v, home); apply(); }
@@ -664,7 +685,7 @@
       apply();
     }
     el.addEventListener("touchstart", (e) => {
-      if (el.classList.contains("is-offsite")) return;
+      if (mapLocked()) return;
       e.preventDefault();
       touching = true;
       if (e.touches.length === 1) {
@@ -675,7 +696,7 @@
       startFrom(e);
     }, { passive: false });
     el.addEventListener("touchmove", (e) => {
-      if (el.classList.contains("is-offsite")) return;
+      if (mapLocked()) return;
       e.preventDefault();
       if (!t0) return;
       if (t0.mode === "pinch" && e.touches.length >= 2) {
@@ -699,14 +720,14 @@
 
     // Desktop: ctrl/⌘ + wheel or trackpad pinch zooms, drag pans, double-click resets
     el.addEventListener("wheel", (e) => {
-      if (el.classList.contains("is-offsite")) return;
+      if (mapLocked()) return;
       if (!e.ctrlKey && !e.metaKey) return;
       e.preventDefault(); stopAnim();
       const r = el.getBoundingClientRect();
       zoomAt(e.clientX - r.left, e.clientY - r.top, v.s * Math.exp(-e.deltaY * 0.01));
     }, { passive: false });
     let drag = null;
-    el.addEventListener("mousedown", (e) => { if (el.classList.contains("is-offsite")) return; stopAnim(); drag = { px: e.clientX, py: e.clientY, x: v.x, y: v.y }; e.preventDefault(); });
+    el.addEventListener("mousedown", (e) => { if (mapLocked()) return; stopAnim(); drag = { px: e.clientX, py: e.clientY, x: v.x, y: v.y }; e.preventDefault(); });
     window.addEventListener("mousemove", (e) => { if (!drag) return; v.x = drag.x + e.clientX - drag.px; v.y = drag.y + e.clientY - drag.py; apply(); });
     window.addEventListener("mouseup", () => { drag = null; });
     el.addEventListener("dblclick", reset);

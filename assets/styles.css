@@ -394,6 +394,40 @@ body {
 }
 .map.is-offsite + .map-full-btn { visibility: hidden; pointer-events: none; }
 
+/* Academic Sessions: name-tag photo in the map slot, same feathered
+ * paper frame as the campus map, no red circle, no pinch chrome. */
+.map.is-photo .map-stage,
+.map.is-photo .map-pin,
+.map.is-photo .map-area,
+.map.is-photo .map-cap,
+.map.is-photo .map-flash {
+  opacity: 0;
+  pointer-events: none;
+}
+.map-photo {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg);
+  z-index: 4;
+  pointer-events: none;
+}
+.map-photo[hidden] { display: none; }
+.map-photo img {
+  display: block;
+  width: 100%; height: 100%;
+  object-fit: contain;
+  object-position: center;
+  -webkit-user-drag: none; user-select: none;
+  pointer-events: none;
+}
+.map.is-photo .map-blur,
+.map.is-photo .map-blur-top,
+.map.is-photo .map-fade {
+  z-index: 6;
+  pointer-events: none;
+}
+.map.is-photo + .map-full-btn { visibility: hidden; pointer-events: none; }
+
 
 /* Idle "SWIPE UP" hint: same type as pinch-to-zoom, sits just above the map.
  * Invisible until it pulses (opacity 0 → .8 → 0, with a slight upward drift). */
