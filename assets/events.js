@@ -97,7 +97,7 @@ window.PUC_EVENTS = [
   // ---------------- Monday, Nov 16 ----------------
   // Van spot is not named in the itinerary or earlier trip notes, so Load
   // Vans and Depart for SFO use the dorms, same as Back to Dorms.
-  { id: "mon-load",      start: "2026-11-16T07:00", end: "2026-11-16T07:30", title: "Load Vans",          place: ["grainger", "graf"], where: "Grainger (girls) / Graf (boys)", note: ["All luggage. Wear your academic tour outfit—absolutely no slobmaxing", "Keep your airport outfit handy. Change after security."] },
+  { id: "mon-load",      start: "2026-11-16T07:00", end: "2026-11-16T07:30", title: "Load Vans",          place: ["grainger", "graf"], where: "Vans", note: ["All luggage. Wear your academic tour outfit—absolutely no slobmaxing", "Keep your airport outfit handy. Change after security."] },
   { id: "mon-breakfast", start: "2026-11-16T07:30", end: "2026-11-16T08:30", title: "Breakfast",          place: "dining" },
   { id: "mon-session1",  start: "2026-11-16T09:00", end: "2026-11-16T09:50", title: "Academic Session I", place: "mall", where: "Check your name tag for where you need to go", cardImg: "name-tag.jpg", noPin: true, search: true },
   { id: "mon-session2",  start: "2026-11-16T10:00", end: "2026-11-16T10:50", title: "Academic Session II", place: "mall", where: "Check your name tag for where you need to go", cardImg: "name-tag.jpg", noPin: true, search: true },
