@@ -35,8 +35,11 @@
  *             when it ends the page stays on that last card (Arrive PHX).
  *             Offsite cards (SFO, PHX) hide the campus map and show a
  *             simple text location instead, with no red circle.
- *             Academic Session cards show the name-tag photo in the map
- *             slot, in the same feathered frame, instead of a red circle.
+ *             Academic Session cards show the name tag in the 3:2 photo
+ *             slot and an interactive campus map with no default circle.
+ *             A building-search pill sits over that map; a picked
+ *             building is marked with a green circle (red stays on
+ *             event locations).
  *             Sponsors-only cards (Leadership Forum) are shown
  *             and marked, but they are never the student's RIGHT NOW,
  *             UP NEXT, landing card, or red rail dot.
@@ -522,6 +525,12 @@
       areaFor[p.name] = { p, d: svg };
     }));
     const areas = Object.values(areaFor);
+    // v26: one green search pin, separate from the red event-location pins
+    const searchPin = document.createElement("div");
+    searchPin.className = "map-pin is-search";
+    searchPin.setAttribute("aria-hidden", "true");
+    el.insertBefore(searchPin, cap);
+    let searchHit = null;
     const v = { s: 1, x: 0, y: 0 };
     const MAX = 1.2;
     let active = -1;
@@ -542,12 +551,26 @@
         d.style.top = (v.y + p.mapY * v.s) + "px";
         d.style.width = d.style.height = (2 * r) + "px";
       });
+      if (searchPin && searchHit) {
+        const r = Math.max(9, searchHit.mapR * v.s);
+        searchPin.style.left = (v.x + searchHit.mapX * v.s) + "px";
+        searchPin.style.top = (v.y + searchHit.mapY * v.s) + "px";
+        searchPin.style.width = searchPin.style.height = (2 * r) + "px";
+      }
       areas.forEach(({ d }) => { d.style.transform = "translate(" + v.x + "px," + v.y + "px) scale(" + v.s + ")"; });
     }
     /** View that frames event i's circle(s). */
     function homeFor(i) {
       const b = bounds();
       if (!b.w || !b.h) return null;
+      if (items[i] && items[i].search && searchHit && typeof searchHit.mapX === "number") {
+        const p = searchHit;
+        const x0 = p.mapX - p.mapR, y0 = p.mapY - p.mapR, x1 = p.mapX + p.mapR, y1 = p.mapY + p.mapR;
+        const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+        const span = Math.max(x1 - x0, y1 - y0) * 4.2;
+        const s = Math.max(minScale(), Math.min(MAX, Math.min(b.w, b.h) / span));
+        return { s, x: b.w / 2 - cx * s, y: b.h / 2 - cy * s };
+      }
       const skipPins = !!(items[i] && items[i].noPin);
       const ps = (skipPins ? [] : (items[i] ? items[i].places : [])).filter(p => typeof p.mapX === "number");
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -655,6 +678,9 @@
       const showPins = !off && !photo && !it.noPin;
       pins.forEach(({ p, d }) => d.classList.toggle("is-on", showPins && names.indexOf(p.name) >= 0));
       areas.forEach(({ p, d }) => d.classList.toggle("is-on", showPins && names.indexOf(p.name) >= 0));
+      const searchOn = !!(it.search) && !off && !photo;
+      searchPin.classList.toggle("is-on", searchOn && !!searchHit);
+      setSearchOpen(searchOn);
       el.setAttribute("aria-label", photo
         ? PHOTO_ALT
         : off
@@ -764,6 +790,168 @@
       }
     }
     function isFull() { return mapFull; }
+
+    // ---- v26: building search (Academic Session cards only) ----
+    const searchRoot = document.getElementById("map-search");
+    const searchInput = document.getElementById("map-search-q");
+    const searchClear = document.getElementById("map-search-clear");
+    const searchList = document.getElementById("map-search-list");
+    const findBuildings = window.PUC_BUILDING_SEARCH || function () { return []; };
+    let searchOpen = false;
+    let activeChoice = -1;
+    let listItems = [];
+
+    function setSearchOpen(on) {
+      searchOpen = !!on;
+      if (!searchRoot) return;
+      searchRoot.hidden = !searchOpen;
+      if (!searchOpen) {
+        hideList();
+        searchRoot.style.transform = "";
+        if (searchInput && document.activeElement === searchInput) searchInput.blur();
+      } else {
+        syncSearchChrome();
+        pinSearchToViewport();
+      }
+    }
+
+    function syncSearchChrome() {
+      if (!searchClear) return;
+      const has = !!(searchInput && searchInput.value.trim()) || !!searchHit;
+      searchClear.hidden = !has;
+    }
+
+    function hideList() {
+      if (!searchList) return;
+      searchList.hidden = true;
+      searchList.innerHTML = "";
+      listItems = [];
+      activeChoice = -1;
+      if (searchInput) searchInput.setAttribute("aria-expanded", "false");
+    }
+
+    function paintList(rows, q) {
+      if (!searchList) return;
+      searchList.innerHTML = "";
+      listItems = rows;
+      activeChoice = rows.length ? 0 : -1;
+      if (!q) { hideList(); return; }
+      if (!rows.length) {
+        const li = document.createElement("li");
+        li.className = "map-search-empty";
+        li.textContent = "No match";
+        searchList.appendChild(li);
+        searchList.hidden = false;
+        if (searchInput) searchInput.setAttribute("aria-expanded", "true");
+        return;
+      }
+      rows.forEach(function (b, i) {
+        const li = document.createElement("li");
+        li.className = "map-search-item" + (i === 0 ? " is-active" : "");
+        li.setAttribute("role", "option");
+        const num = document.createElement("span");
+        num.className = "map-search-num";
+        num.textContent = b.n != null ? String(b.n) : "";
+        const name = document.createElement("span");
+        name.textContent = b.name;
+        li.appendChild(num);
+        li.appendChild(name);
+        // mousedown so the input doesn't blur before the tap registers
+        li.addEventListener("mousedown", function (e) { e.preventDefault(); pickBuilding(b); });
+        searchList.appendChild(li);
+      });
+      searchList.hidden = false;
+      if (searchInput) searchInput.setAttribute("aria-expanded", "true");
+    }
+
+    function markActive(i) {
+      if (!searchList) return;
+      const els = searchList.querySelectorAll(".map-search-item");
+      els.forEach(function (el, n) { el.classList.toggle("is-active", n === i); });
+      if (els[i]) {
+        const el = els[i];
+        const top = el.offsetTop, bot = top + el.offsetHeight;
+        if (top < searchList.scrollTop) searchList.scrollTop = top;
+        else if (bot > searchList.scrollTop + searchList.clientHeight) searchList.scrollTop = bot - searchList.clientHeight;
+      }
+      activeChoice = i;
+    }
+
+    function pickBuilding(b) {
+      if (!b) return;
+      searchHit = b;
+      if (searchInput) searchInput.value = b.name;
+      hideList();
+      syncSearchChrome();
+      searchPin.classList.toggle("is-on", !!(items[active] && items[active].search) && !!searchHit);
+      apply();
+      const home = homeFor(active < 0 ? 0 : active);
+      if (home) glideTo(home, 500);
+      if (searchInput) searchInput.blur();
+    }
+
+    function clearSearch() {
+      searchHit = null;
+      if (searchInput) searchInput.value = "";
+      hideList();
+      syncSearchChrome();
+      searchPin.classList.remove("is-on");
+      const it = items[active];
+      if (it && it.search) {
+        const home = homeFor(active);
+        if (home) glideTo(home, 500);
+        else apply();
+      } else apply();
+    }
+
+    function onQuery() {
+      if (!searchOpen) return;
+      const q = searchInput ? searchInput.value : "";
+      syncSearchChrome();
+      paintList(findBuildings(q, 8), q.trim());
+    }
+
+    if (searchInput) {
+      searchInput.addEventListener("input", onQuery);
+      searchInput.addEventListener("focus", onQuery);
+      searchInput.addEventListener("keydown", function (e) {
+        if (e.key === "ArrowDown") {
+          if (!listItems.length) return;
+          e.preventDefault();
+          markActive(Math.min(listItems.length - 1, activeChoice + 1));
+        } else if (e.key === "ArrowUp") {
+          if (!listItems.length) return;
+          e.preventDefault();
+          markActive(Math.max(0, activeChoice - 1));
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          if (listItems.length) pickBuilding(listItems[activeChoice < 0 ? 0 : activeChoice]);
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          if (!searchList.hidden) hideList();
+          else clearSearch();
+        }
+      });
+    }
+    if (searchClear) searchClear.addEventListener("click", function (e) { e.preventDefault(); clearSearch(); if (searchInput) searchInput.focus(); });
+
+    function pinSearchToViewport() {
+      if (!searchRoot || searchRoot.hidden) { if (searchRoot) searchRoot.style.transform = ""; return; }
+      const vv = window.visualViewport;
+      if (!vv) { searchRoot.style.transform = ""; return; }
+      searchRoot.style.transform = "";
+      const pill = searchRoot.querySelector(".map-search-pill");
+      if (!pill) return;
+      const r = pill.getBoundingClientRect();
+      const vvBottom = vv.offsetTop + vv.height;
+      const overflow = r.bottom - (vvBottom - 10);
+      if (overflow > 0) searchRoot.style.transform = "translateY(" + (-overflow) + "px)";
+    }
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", pinSearchToViewport);
+      window.visualViewport.addEventListener("scroll", pinSearchToViewport);
+    }
+    window.addEventListener("resize", pinSearchToViewport);
 
     return { show, bump, reset, setFull, isFull };
   }

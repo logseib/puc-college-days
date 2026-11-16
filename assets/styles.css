@@ -28,6 +28,18 @@
      v7 keeps that rim and makes only the top edge ~1.5× taller (57px). */
   --map-fade: 38px;
   --map-fade-top: 57px;
+  /* v26: Logan's chat-app green. sRGB fallback, then Display P3 when the
+     browser can paint it (sampled P3 #43975d → sRGB #009957). */
+  --search-green: #009957;
+  --search-green-fill: rgba(0, 153, 87, .10);
+  --search-green-ring: rgba(0, 153, 87, .28);
+}
+@supports (color: color(display-p3 1 1 1)) {
+  :root {
+    --search-green: color(display-p3 0.263 0.592 0.365);
+    --search-green-fill: color(display-p3 0.263 0.592 0.365 / 0.10);
+    --search-green-ring: color(display-p3 0.263 0.592 0.365 / 0.28);
+  }
 }
 
 * { box-sizing: border-box; }
@@ -342,6 +354,12 @@ body {
   opacity: 0; transition: opacity .35s ease;   /* circles cross-fade between events */
 }
 .map-pin.is-on { opacity: 1; }
+/* v26: search-result circle. Same 2px stroke + 10% fill as the red
+ * event-location pin, but in --search-green. Red stays on event pins. */
+.map-pin.is-search {
+  border-color: var(--search-green);
+  background: var(--search-green-fill);
+}
 /* v9: straight-segment area outline (Free Time), same red as the circles */
 .map-area {
   position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible;
@@ -594,4 +612,131 @@ html.is-map-full, html.is-map-full body { overflow: hidden; overscroll-behavior:
   .photo-track .photo:last-child { opacity: 0; }
   .photo-track.is-interior .photo:first-child { opacity: 0; }
   .photo-track.is-interior .photo:last-child { opacity: 1; }
+}
+
+
+/* ---------- v26: building search (Academic Session cards only) ----------
+ * The pill sits over the top of the campus map. The widget is a sibling
+ * of #map so the upward suggestion list is not clipped, and so map
+ * touch handlers do not swallow taps. Input is 16px to keep iOS from
+ * zooming on focus. */
+.map-search {
+  position: fixed; z-index: 8;
+  left: 14px; right: 14px;
+  top: calc(100% - var(--map-h) + 12px);
+  display: flex; flex-direction: column-reverse; /* list opens upward */
+  align-items: stretch; gap: 8px;
+  pointer-events: none;
+}
+.map-search[hidden] { display: none !important; }
+.map-search > * { pointer-events: auto; }
+
+.map-search-pill {
+  display: flex; align-items: center; gap: 8px;
+  height: 44px; padding: 0 6px 0 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .88);
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  border: 1.5px solid rgba(22, 22, 22, .12);
+  box-shadow: 0 1px 4px rgba(22, 22, 22, .06);
+}
+.map-search-pill:focus-within {
+  border-color: var(--search-green);
+  box-shadow: 0 0 0 3px var(--search-green-ring), 0 1px 4px rgba(22, 22, 22, .06);
+}
+.map-search-icon {
+  flex: 0 0 auto;
+  color: var(--search-green);
+  display: block;
+}
+.map-search-pill input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 44px; margin: 0; padding: 0;
+  border: 0; background: transparent;
+  font-family: var(--sans);
+  font-size: 16px;          /* iOS: <16px zooms the page on focus */
+  font-weight: 400;
+  letter-spacing: -.01em;
+  color: var(--ink);
+  outline: none;
+  -webkit-appearance: none; appearance: none;
+  border-radius: 0;
+}
+.map-search-pill input::-webkit-search-decoration,
+.map-search-pill input::-webkit-search-cancel-button,
+.map-search-pill input::-webkit-search-results-button,
+.map-search-pill input::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+}
+.map-search-pill input::placeholder { color: var(--muted); opacity: 1; }
+
+.map-search-clear {
+  flex: 0 0 auto;
+  width: 44px; height: 44px; margin: 0; padding: 0;
+  border: 0; background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+}
+.map-search-clear[hidden] { display: none; }
+.map-search-clear::before,
+.map-search-clear::after {
+  content: "";
+  position: absolute; left: 50%; top: 50%;
+  width: 12px; height: 1.5px;
+  background: currentColor;
+  border-radius: 1px;
+}
+.map-search-clear::before { transform: translate(-50%, -50%) rotate(45deg); }
+.map-search-clear::after  { transform: translate(-50%, -50%) rotate(-45deg); }
+
+.map-search-list {
+  margin: 0; padding: 4px 0;
+  list-style: none;
+  max-height: min(40vh, 280px);
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  background: rgba(255, 255, 255, .94);
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  border: 1px solid rgba(22, 22, 22, .10);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(22, 22, 22, .12);
+}
+.map-search-list[hidden] { display: none; }
+.map-search-item {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 10px 14px;
+  min-height: 44px;
+  font-family: var(--sans);
+  font-size: 16px; font-weight: 400;
+  color: var(--ink);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.map-search-item.is-active,
+.map-search-item:active { background: var(--search-green-fill); }
+.map-search-num {
+  flex: 0 0 1.8em;
+  font-family: var(--mono);
+  font-size: 12px; font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .02em;
+  color: var(--muted);
+}
+.map-search-empty {
+  padding: 12px 14px;
+  min-height: 44px;
+  font-family: var(--sans);
+  font-size: 15px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+/* Full-screen map: pill at the top of the now-full map, list opens down. */
+html.is-map-full .map-search {
+  z-index: 42;
+  top: calc(var(--safe-top) + 12px);
+  flex-direction: column;
 }
