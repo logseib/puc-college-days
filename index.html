@@ -37,7 +37,7 @@
   <link rel="shortcut icon" href="assets/icons/favicon.ico?v=14">
   <link rel="manifest" href="manifest.json?v=15">
   <link rel="preload" as="image" href="assets/img/puc-campus-map-v5.webp">
-  <link rel="stylesheet" href="assets/styles.css?v=27">
+  <link rel="stylesheet" href="assets/styles.css?v=28">
   <link rel="stylesheet" href="assets/egg.css?v=23">
 </head>
 <body>
@@ -71,6 +71,10 @@
     <div class="map-fade"></div>
     <div class="map-flash" aria-hidden="true"></div>
     <div class="map-cap">pinch to zoom</div>
+    <div class="map-offsite" id="map-offsite" hidden>
+      <div class="map-offsite-code"></div>
+      <div class="map-offsite-name"></div>
+    </div>
   </div>
   <!-- v14: full-screen map toggle. A sibling of #map (not inside it) because the map's
        touchstart preventDefault would swallow the tap. Icon is set by app.js. -->
@@ -85,8 +89,8 @@
   </div>
   <noscript><p class="noscript">This schedule needs JavaScript turned on.</p></noscript>
 
-  <script src="assets/events.js?v=18"></script>
-  <script src="assets/app.js?v=26"></script>
+  <script src="assets/events.js?v=19"></script>
+  <script src="assets/app.js?v=27"></script>
   <script src="assets/a2hs.js?v=17"></script>
   <script src="assets/egg.js?v=23"></script>  <!-- v21: two arcade buttons + swipe (reserved prize-GIF slots) -->
 </body>
