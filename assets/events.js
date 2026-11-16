@@ -18,7 +18,9 @@
  *             (and the map still frames every key).
  *   photo     optional place key whose image to show (overrides first key)
  *   where     optional custom location text (overrides place names)
- *   note      optional small line under the location
+ *   note      optional small line under the location (string or array)
+ *   clock     optional title time, when the displayed clock is not the
+ *             Pacific start (e.g. Arrive PHX is 10:25PM Arizona time)
  *   audience  "all" (default) or "sponsors" — sponsors-only cards are
  *             shown but never chosen as the student's "current" event
  * ===================================================================== */
@@ -39,6 +41,8 @@
  *   pedestrian plaza between Dining Commons and the Library.
  * Off-campus or unsited places (St. Helena, Free Time) have no mapX — the
  * map then shows the full campus and draws no red circle.
+ * Places marked offsite (SFO, PHX) have no circle either: the map panel
+ * hides the campus illustration and shows a simple text location instead.
  * Note: the illustration is rotated — north points LEFT, east points UP. */
 window.PUC_MAP = {
   src: "assets/img/puc-campus-map-v5.webp", w: 3145, h: 2046
@@ -64,6 +68,8 @@ window.PUC_PLACES = {
   airport:    { name: "PUC Airport (Virgil O. Parrett Field)", lat: 38.572059, lng: -122.434216, img: "angwin-scenery.jpg", radius: 90 },
   elmshaven:  { name: "Elmshaven",                  sub: "Ellen G. White's home · 125 Glass Mountain Ln, St. Helena", lat: 38.537060, lng: -122.478762, img: "elmshaven.jpg" },
   sthelena:   { name: "Downtown St. Helena",        sub: "Main Street, St. Helena, CA", lat: 38.504575, lng: -122.469352, img: "sthelena.jpg", radius: 220 },
+  sfo:        { name: "San Francisco International Airport", sub: "SFO", offsite: true, img: null },
+  phx:        { name: "Phoenix Sky Harbor International Airport", sub: "PHX", offsite: true, img: null },
   free:       { name: "Your choice (on campus)", lat: 38.569889, lng: -122.440449, img: null, radius: 160,
                 // v9: straight-segment outline of the main campus (map px), drawn in the circle red
                 area: [[537,1397],[630,1014],[860,768],[1213,682],[2150,614],[2565,722],[2472,860],[2227,1014],[2227,1367],[1351,1459],[799,1459]] }  // img: null → no photo
@@ -85,12 +91,19 @@ window.PUC_EVENTS = [
   { id: "sun-dorms",     start: "2026-11-15T22:00", end: "2026-11-15T23:00", title: "Back to Dorms",      place: ["grainger", "graf"], where: "Grainger (girls) / Graf (boys)" },
 
   // ---------------- Monday, Nov 16 ----------------
-  { id: "mon-breakfast", start: "2026-11-16T07:30", end: "2026-11-16T08:30", title: "Breakfast",          place: "dining", note: "Wear your professional clothes for class today" },
+  // Van spot is not named in the itinerary or earlier trip notes, so Load
+  // Vans and Depart for SFO use the dorms, same as Back to Dorms.
+  { id: "mon-load",      start: "2026-11-16T07:00", end: "2026-11-16T07:30", title: "Load Vans",          place: ["grainger", "graf"], where: "Grainger (girls) / Graf (boys)", note: ["All luggage. Wear your academic-tour outfit", "Keep your airport outfit handy. Change after security."] },
+  { id: "mon-breakfast", start: "2026-11-16T07:30", end: "2026-11-16T08:30", title: "Breakfast",          place: "dining" },
   { id: "mon-walk",      start: "2026-11-16T08:50", end: "2026-11-16T09:00", title: "Walk to Classes",    place: "mall" },
   { id: "mon-session1",  start: "2026-11-16T09:00", end: "2026-11-16T09:50", title: "Academic Session I", place: "mall", where: "Various departments" },
   { id: "mon-forum",     start: "2026-11-16T09:00", end: "2026-11-16T10:00", title: "Leadership Forum",   place: "utt", audience: "sponsors", note: "Sponsors & parents only" },
   { id: "mon-session2",  start: "2026-11-16T10:00", end: "2026-11-16T10:50", title: "Academic Session II", place: "mall", where: "Various departments" },
   { id: "mon-closing",   start: "2026-11-16T11:00", end: "2026-11-16T11:30", title: "Closing Session",    place: "paulin" },
-  { id: "mon-lunch",     start: "2026-11-16T11:30", end: "2026-11-16T12:30", title: "Lunch",              place: "dining" },
-  { id: "mon-depart",    start: "2026-11-16T13:00", end: "2026-11-16T13:30", title: "Depart Campus",      place: "mall", note: "Have your bags packed" }
+  { id: "mon-sfo",       start: "2026-11-16T11:30", end: "2026-11-16T16:55", title: "Depart for SFO",     place: ["grainger", "graf"], where: "Grainger (girls) / Graf (boys)", note: "Lunch bags in your vehicle, eat en route" },
+  // Flight 2645 SFO 4:55PM PT → LAX 6:35PM PT; Flight 2671 LAX 8:00PM PT →
+  // PHX 10:25PM Arizona (= 9:25PM Pacific). start/end are Pacific wall time
+  // so RIGHT NOW / UP NEXT stay honest; the Arrive card shows 10:25PM.
+  { id: "mon-flight",    start: "2026-11-16T16:55", end: "2026-11-16T21:25", title: "Flight from SFO",    place: "sfo", note: "Stopover in LAX, then on to PHX" },
+  { id: "mon-arrive",    start: "2026-11-16T21:25", end: "2026-11-16T22:25", title: "Arrive PHX",         place: "phx", clock: "10:25PM", note: "Scheduled arrival · Arizona time" }
 ];

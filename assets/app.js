@@ -32,8 +32,10 @@
  *             At 0 the badge is removed, RIGHT NOW takes over on that
  *             card, and UP NEXT moves to the following event, no reload
  *             needed. After the last event starts there is no UP NEXT;
- *             when it ends the page stays on that last card (Depart
- *             Campus). Sponsors-only cards (Leadership Forum) are shown
+ *             when it ends the page stays on that last card (Arrive PHX).
+ *             Offsite cards (SFO, PHX) hide the campus map and show a
+ *             simple text location instead, with no red circle.
+ *             Sponsors-only cards (Leadership Forum) are shown
  *             and marked, but they are never the student's RIGHT NOW,
  *             UP NEXT, landing card, or red rail dot.
  *             The map frames the card that is shown.
@@ -185,11 +187,11 @@
           '<span class="now-tag" aria-hidden="true">Right now</span>' +
           '<span class="next-tag" aria-hidden="true">Up next</span>' +
           sponsorTag +
-          '<span class="lead"><span class="when">' + esc(fmtStart(it.start)) + '</span><span class="sep"> :&nbsp;</span></span>' +
+          '<span class="lead"><span class="when">' + esc(it.clock || fmtStart(it.start)) + '</span><span class="sep"> :&nbsp;</span></span>' +
           '<span class="name">' + esc(it.title) + "</span>" +
         "</h2>" +
         '<div class="where"><span class="where-k">Location :</span> ' + esc(where) + (sub ? '<span class="note">' + esc(sub) + "</span>" : "") +
-          (it.note ? '<span class="note">' + esc(it.note) + "</span>" : "") + "</div>" +
+          [].concat(it.note || []).filter(Boolean).map(function (n) { return '<span class="note">' + esc(n) + "</span>"; }).join("") + "</div>" +
         photoHTML(p0, it.index) +
       "</div>";
     timeline.appendChild(card);
@@ -606,14 +608,33 @@
       animRaf = requestAnimationFrame(step);
     }
 
-    /** Make event i the map's subject: cross-fade circles and glide (or jump) there. */
+    const offEl = document.getElementById("map-offsite");
+    const offCode = offEl ? offEl.querySelector(".map-offsite-code") : null;
+    const offName = offEl ? offEl.querySelector(".map-offsite-name") : null;
+    function isOffsite(it) {
+      return !!(it && it.places.length && it.places.every(p => p.offsite));
+    }
+    /** Make event i the map's subject: cross-fade circles and glide (or jump) there.
+     *  Offsite events hide the campus illustration and show a text location. */
     function show(i, animate) {
       if (!items[i]) return;
-      const names = items[i].places.map(p => p.name);
-      pins.forEach(({ p, d }) => d.classList.toggle("is-on", names.indexOf(p.name) >= 0));
-      areas.forEach(({ p, d }) => d.classList.toggle("is-on", names.indexOf(p.name) >= 0));
-      el.setAttribute("aria-label", "Campus map : " + (items[i].where || names.join(", ")));
+      const it = items[i];
+      const names = it.places.map(p => p.name);
+      const off = isOffsite(it);
+      el.classList.toggle("is-offsite", off);
+      if (offEl) {
+        const p0 = it.places[0] || {};
+        if (offCode) offCode.textContent = p0.sub || "";
+        if (offName) offName.textContent = it.where || p0.name || "";
+        offEl.hidden = !off;
+      }
+      pins.forEach(({ p, d }) => d.classList.toggle("is-on", !off && names.indexOf(p.name) >= 0));
+      areas.forEach(({ p, d }) => d.classList.toggle("is-on", !off && names.indexOf(p.name) >= 0));
+      el.setAttribute("aria-label", off
+        ? ("Location : " + (it.where || names.join(", ")))
+        : ("Campus map : " + (it.where || names.join(", "))));
       active = i;
+      if (off) { stopAnim(); return; }
       const home = homeFor(i); if (!home) return;
       if (animate) glideTo(home, 500);
       else { stopAnim(); Object.assign(v, home); apply(); }
@@ -643,6 +664,7 @@
       apply();
     }
     el.addEventListener("touchstart", (e) => {
+      if (el.classList.contains("is-offsite")) return;
       e.preventDefault();
       touching = true;
       if (e.touches.length === 1) {
@@ -653,6 +675,7 @@
       startFrom(e);
     }, { passive: false });
     el.addEventListener("touchmove", (e) => {
+      if (el.classList.contains("is-offsite")) return;
       e.preventDefault();
       if (!t0) return;
       if (t0.mode === "pinch" && e.touches.length >= 2) {
@@ -676,13 +699,14 @@
 
     // Desktop: ctrl/⌘ + wheel or trackpad pinch zooms, drag pans, double-click resets
     el.addEventListener("wheel", (e) => {
+      if (el.classList.contains("is-offsite")) return;
       if (!e.ctrlKey && !e.metaKey) return;
       e.preventDefault(); stopAnim();
       const r = el.getBoundingClientRect();
       zoomAt(e.clientX - r.left, e.clientY - r.top, v.s * Math.exp(-e.deltaY * 0.01));
     }, { passive: false });
     let drag = null;
-    el.addEventListener("mousedown", (e) => { stopAnim(); drag = { px: e.clientX, py: e.clientY, x: v.x, y: v.y }; e.preventDefault(); });
+    el.addEventListener("mousedown", (e) => { if (el.classList.contains("is-offsite")) return; stopAnim(); drag = { px: e.clientX, py: e.clientY, x: v.x, y: v.y }; e.preventDefault(); });
     window.addEventListener("mousemove", (e) => { if (!drag) return; v.x = drag.x + e.clientX - drag.px; v.y = drag.y + e.clientY - drag.py; apply(); });
     window.addEventListener("mouseup", () => { drag = null; });
     el.addEventListener("dblclick", reset);

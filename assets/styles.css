@@ -357,6 +357,44 @@ body {
   color: var(--muted); opacity: .8;
 }
 
+/* Offsite events (SFO, PHX): hide the campus map and show a quiet
+ * typographic location in the same bottom-half slot. No red circle. */
+.map.is-offsite .map-stage,
+.map.is-offsite .map-pin,
+.map.is-offsite .map-area,
+.map.is-offsite .map-cap,
+.map.is-offsite .map-blur,
+.map.is-offsite .map-blur-top,
+.map.is-offsite .map-fade,
+.map.is-offsite .map-flash {
+  opacity: 0;
+  pointer-events: none;
+}
+.map-offsite {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 8px;
+  padding: 24px 28px calc(24px + var(--safe-bottom));
+  text-align: center;
+  pointer-events: none;
+  z-index: 5;
+}
+.map-offsite[hidden] { display: none; }
+.map-offsite-code {
+  font-family: var(--sans);
+  font-size: 42px; font-weight: 300; letter-spacing: .16em;
+  line-height: 1; color: var(--ink);
+}
+.map-offsite-name {
+  font-family: var(--mono);
+  font-size: 13px; font-weight: 500; letter-spacing: .04em;
+  line-height: 1.35; color: var(--muted);
+  max-width: 16em;
+}
+.map.is-offsite + .map-full-btn { visibility: hidden; pointer-events: none; }
+
+
 /* Idle "SWIPE UP" hint: same type as pinch-to-zoom, sits just above the map.
  * Invisible until it pulses (opacity 0 → .8 → 0, with a slight upward drift). */
 .scroll-hint {
