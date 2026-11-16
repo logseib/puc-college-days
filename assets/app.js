@@ -154,9 +154,13 @@
   const dotsEl = document.getElementById("dots");
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-  function photoHTML(p0, index) {
-    if (!p0 || !p0.img) return "";
+  const TAG_ALT = "Example name tag : class times and rooms are listed under your name";
+  function photoHTML(p0, index, it) {
     const lazy = index ? ' loading="lazy"' : "";
+    if (it && it.cardImg) {
+      return '<div class="photo-wrap is-tag"><img class="photo is-tag" alt="' + esc(TAG_ALT) + '" src="' + IMG_DIR + esc(it.cardImg) + '?v=1"' + lazy + "></div>";
+    }
+    if (!p0 || !p0.img) return "";
     const church = p0.img === "puc-church.jpg" ? " is-church" : "";
     const ext = '<img class="photo' + church + '" alt="' + esc(p0.name || "") + '" src="' + IMG_DIR + esc(p0.img) + '"' + lazy + ">";
     if (!p0.interior) {
@@ -194,7 +198,7 @@
         "</h2>" +
         '<div class="where"><span class="where-k">Location :</span> ' + esc(where) + (sub ? '<span class="note">' + esc(sub) + "</span>" : "") +
           [].concat(it.note || []).filter(Boolean).map(function (n) { return '<span class="note">' + esc(n) + "</span>"; }).join("") + "</div>" +
-        photoHTML(p0, it.index) +
+        photoHTML(p0, it.index, it) +
       "</div>";
     timeline.appendChild(card);
   });
@@ -544,10 +548,11 @@
     function homeFor(i) {
       const b = bounds();
       if (!b.w || !b.h) return null;
-      const ps = (items[i] ? items[i].places : []).filter(p => typeof p.mapX === "number");
+      const skipPins = !!(items[i] && items[i].noPin);
+      const ps = (skipPins ? [] : (items[i] ? items[i].places : [])).filter(p => typeof p.mapX === "number");
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
       ps.forEach(p => { x0 = Math.min(x0, p.mapX - p.mapR); y0 = Math.min(y0, p.mapY - p.mapR); x1 = Math.max(x1, p.mapX + p.mapR); y1 = Math.max(y1, p.mapY + p.mapR); });
-      const as = (items[i] ? items[i].places : []).filter(p => Array.isArray(p.area));
+      const as = (skipPins ? [] : (items[i] ? items[i].places : [])).filter(p => Array.isArray(p.area));
       as.forEach(p => p.area.forEach(([ax, ay]) => { x0 = Math.min(x0, ax); y0 = Math.min(y0, ay); x1 = Math.max(x1, ax); y1 = Math.max(y1, ay); }));
       if (!ps.length && !as.length) { x0 = 0; y0 = 0; x1 = MAP.w; y1 = MAP.h; }
       if (!ps.length && as.length) {   // frame the outline itself, with a little margin
@@ -647,8 +652,9 @@
         if (offName) offName.textContent = it.where || p0.name || "";
         offEl.hidden = !off;
       }
-      pins.forEach(({ p, d }) => d.classList.toggle("is-on", !off && !photo && names.indexOf(p.name) >= 0));
-      areas.forEach(({ p, d }) => d.classList.toggle("is-on", !off && !photo && names.indexOf(p.name) >= 0));
+      const showPins = !off && !photo && !it.noPin;
+      pins.forEach(({ p, d }) => d.classList.toggle("is-on", showPins && names.indexOf(p.name) >= 0));
+      areas.forEach(({ p, d }) => d.classList.toggle("is-on", showPins && names.indexOf(p.name) >= 0));
       el.setAttribute("aria-label", photo
         ? PHOTO_ALT
         : off

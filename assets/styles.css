@@ -252,6 +252,14 @@ body {
  * frame and the big blue sky is reduced. 85% keeps the sign fully visible
  * even when the photo wrap shrinks on short screens. */
 .photo.is-church { object-position: center 85%; }
+/* Academic Session name tag in the 3:2 location slot: show the whole tag
+ * (arrow + class lines), letterboxed on the paper, no saturation filter. */
+.photo-wrap.is-tag {
+  background: #fff;
+  flex: 1 1 auto;
+  min-height: 150px;   /* keep the tag readable on short screens (320x568) */
+}
+.photo.is-tag { object-fit: contain; object-position: center; filter: none; }
 
 /* Exterior → interior slider (only when a place has an interior photo).
  * The track is two frames wide and slides horizontally inside the 3:2 wrap. */
