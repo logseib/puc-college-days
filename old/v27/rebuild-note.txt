@@ -1,0 +1,1 @@
+v27 rebuild trigger: GitHub Pages skipped building commit 204c12e (index.html events.js?v=24). Sun Nov 15 23:23:45 PST 2026
