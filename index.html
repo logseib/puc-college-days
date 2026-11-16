@@ -37,7 +37,7 @@
   <link rel="shortcut icon" href="assets/icons/favicon.ico?v=14">
   <link rel="manifest" href="manifest.json?v=15">
   <link rel="preload" as="image" href="assets/img/puc-campus-map-v5.webp">
-  <link rel="stylesheet" href="assets/styles.css?v=28">
+  <link rel="stylesheet" href="assets/styles.css?v=29">
   <link rel="stylesheet" href="assets/egg.css?v=23">
 </head>
 <body>
@@ -75,6 +75,9 @@
       <div class="map-offsite-code"></div>
       <div class="map-offsite-name"></div>
     </div>
+    <div class="map-photo" id="map-photo" hidden>
+      <img alt="Example name tag : class times and rooms are listed under your name" draggable="false">
+    </div>
   </div>
   <!-- v14: full-screen map toggle. A sibling of #map (not inside it) because the map's
        touchstart preventDefault would swallow the tap. Icon is set by app.js. -->
@@ -89,8 +92,8 @@
   </div>
   <noscript><p class="noscript">This schedule needs JavaScript turned on.</p></noscript>
 
-  <script src="assets/events.js?v=20"></script>
-  <script src="assets/app.js?v=27"></script>
+  <script src="assets/events.js?v=21"></script>
+  <script src="assets/app.js?v=28"></script>
   <script src="assets/a2hs.js?v=17"></script>
   <script src="assets/egg.js?v=23"></script>  <!-- v21: two arcade buttons + swipe (reserved prize-GIF slots) -->
 </body>
