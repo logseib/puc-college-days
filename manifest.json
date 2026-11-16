@@ -1,7 +1,7 @@
 {
   "name": "Attendancemaxing",
   "short_name": "Attendancemaxing",
-  "description": "PUC College Days · Sunday, November 15. Live schedule for TAA students.",
+  "description": "PUC College Days · November 15–16. Live schedule for TAA students.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
